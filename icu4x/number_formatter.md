@@ -11,9 +11,9 @@ The formatting pipeline follows a layered architecture where the currency format
 ```mermaid
 graph TD
     FD[FixedDecimal] --> DF[DecimalFormatter]
-    DF --> CF["CurrencyFormatter<Decimal>"]
-    DF --> CSF["CurrencyFormatter<Scientific>"]
-    DF --> CCF["CurrencyFormatter<Compact>"]
+    DF --> CF["CurrencyFormatter&lt;Decimal&gt;"]
+    DF --> CSF["CurrencyFormatter&lt;Scientific&gt;"]
+    DF --> CCF["CurrencyFormatter&lt;Compact&gt;"]
 ```
 
 ## Currency Format
@@ -40,7 +40,7 @@ In this option, we use a single `CurrencyFormatter<T>` struct where `T` represen
 
 ```mermaid
 graph TD
-    CF["CurrencyFormatter<T>"] --> Dec["T = Decimal"]
+    CF["CurrencyFormatter&lt;T&gt;"] --> Dec["T = Decimal"]
     CF --> Comp["T = Compact"]
     CF --> Sci["T = Scientific"]
 
