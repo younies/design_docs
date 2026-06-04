@@ -4,18 +4,16 @@ This document describes the design and architecture of number formatting compone
 
 ## Overview
 
-ICU4X number formatting is designed to be highly modular, performant, and zero-copy. It ranges from formatting simple decimal numbers to complex dimensions such as currencies and measurement units.
+ICU4X number formatting is designed to be highly modular, performant, and zero-copy. It covers basic decimal formatting and localized currency formatting.
 
-The formatting pipeline follows a layered architecture where complex formatters build upon simpler ones, sharing common data structures and formatting traits.
+The formatting pipeline follows a layered architecture where the currency formatter builds upon the decimal formatter, sharing common data structures and formatting traits.
 
 ```mermaid
 graph TD
     FD[FixedDecimal] --> DF[DecimalFormatter]
-    DF --> CDF[CompactDecimalFormatter]
-    DF --> CF[CurrencyFormatter]
-    DF --> LCF[LongCurrencyFormatter]
-    DF --> CCF[CompactCurrencyFormatter]
-    DF --> UF[UnitsFormatter / CategorizedFormatter]
+    DF --> CF["CurrencyFormatter<Decimal>"]
+    DF --> CSF["CurrencyFormatter<Scientific>"]
+    DF --> CCF["CurrencyFormatter<Compact>"]
 ```
 
 ## Currency Format
