@@ -18,6 +18,54 @@ graph TD
     DF --> UF[UnitsFormatter / CategorizedFormatter]
 ```
 
+## Currency Format
+
+This section discusses the design options for currency formatting, including the requirements and the proposed designs to address them.
+
+### Requirements
+
+1. **Format shape/length**: There are multiple formatting shapes and lengths. For example:
+   - **Long**: `1 US dollar` / `2 US dollars`
+   - **Short**: `1 USD`
+   - **Narrow**: `$1`
+2. **Format compactness**: Determines the compactness of the value. For example, a compact short format with long currency length could produce `1K US dollars`.
+3. **Value representation**: The value can be represented in different notations, such as scientific (e.g., `1E+5 USD`).
+
+### Designs
+
+#### Option 1: Single struct with multiple constructors
+
+In this option, we use a single `CurrencyFormatter` struct with distinct constructors for each category. This provides a unified API for creating all currency formatters while allowing the underlying data to be sliced appropriately.
+
+```rust
+pub struct CurrencyFormatter;
+
+impl CurrencyFormatter {
+    /// Creates a currency formatter for long formatting.
+    pub fn try_new_long(...) -> Result<Self, DataError>;
+
+    /// Creates a currency formatter for short formatting.
+    pub fn try_new_short(...) -> Result<Self, DataError>;
+
+    /// Creates a currency formatter for narrow formatting.
+    pub fn try_new_narrow(...) -> Result<Self, DataError>;
+
+    /// Creates a currency formatter for long scientific formatting.
+    pub fn try_new_long_scientific(...) -> Result<Self, DataError>;
+
+    /// Creates a currency formatter for short scientific formatting.
+    pub fn try_new_short_scientific(...) -> Result<Self, DataError>;
+
+    /// Creates a currency formatter for narrow scientific formatting.
+    pub fn try_new_narrow_scientific(...) -> Result<Self, DataError>;
+
+    /// Creates a currency formatter for long compact formatting.
+    pub fn try_new_long_compact(...) -> Result<Self, DataError>;
+
+    // ... etc.
+}
+```
+
 ## Core Principles
 
 - **Zero-Copy**: Data is loaded from the data provider with minimal overhead and no unnecessary copies.
