@@ -28,8 +28,8 @@ This section discusses the design options for currency formatting, including the
    - **Long**: `1 US dollar` / `2 US dollars`
    - **Short**: `1 USD`
    - **Narrow**: `$1`
-2. **Format compactness**: Determines the compactness of the value. For example, a compact short format with long currency length could produce `1K US dollars`.
-3. **Value representation**: The value can be represented in different notations, such as scientific (e.g., `1E+5 USD`).
+1. **Value representation**: The value can be represented in different notations, such as scientific (e.g., `1E+5 USD`) , compact short (1k US dollars)
+1. **Accounting dimension**:  this option can be added to the option bag in order to format the negative numbers in the accounting format.
 
 ### Designs
 
@@ -38,38 +38,48 @@ This section discusses the design options for currency formatting, including the
 In this option, we use a single `CurrencyFormatter` struct with distinct constructors for each category. This provides a unified API for creating all currency formatters while allowing the underlying data to be sliced appropriately.
 
 ```rust
-pub struct CurrencyFormatter;
+pub struct Decimal;
+pub struct Compact;
+pub struct Scientific;
+trait ValueRepresentation {
+    Decimal,
+    Compact,
+    Scientific;
+    
+}
 
-impl CurrencyFormatter {
+pub struct CurrencyFormatter<T: ValueRepresetnation{}
+
+impl CurrencyFormatter<T> {
     /// Creates a currency formatter for long formatting.
-    pub fn try_new_long(...) -> Result<Self, DataError>;
+    pub fn try_new_long(...) -> Result<Self<Decimal>, DataError>;
 
     /// Creates a currency formatter for short formatting.
-    pub fn try_new_short(...) -> Result<Self, DataError>;
+    pub fn try_new_short(...) -> Result<Self<Decimal>, DataError>;
 
     /// Creates a currency formatter for narrow formatting.
-    pub fn try_new_narrow(...) -> Result<Self, DataError>;
+    pub fn try_new_narrow(...) -> Result<Self<Decimal>, DataError>;
 
     /// Creates a currency formatter for long scientific formatting.
-    pub fn try_new_long_scientific(...) -> Result<Self, DataError>;
+    pub fn try_new_long_scientific(...) -> Result<Self<Scientific>, DataError>;
 
     /// Creates a currency formatter for short scientific formatting.
-    pub fn try_new_short_scientific(...) -> Result<Self, DataError>;
+    pub fn try_new_short_scientific(...) -> Result<Self<Scientific>, DataError>;
 
     /// Creates a currency formatter for narrow scientific formatting.
-    pub fn try_new_narrow_scientific(...) -> Result<Self, DataError>;
+    pub fn try_new_narrow_scientific(...) -> Result<Self<Scientific>, DataError>;
 
     /// Creates a currency formatter for long compact formatting.
-    pub fn try_new_long_compact(...) -> Result<Self, DataError>;
+    pub fn try_new_long_compact(...) -> Result<Self<Compact>, DataError>;
 
     /// Creates a currency formatter for short compact formatting.
-    pub fn try_new_short_compact(...) -> Result<Self, DataError>;
+    pub fn try_new_short_compact(...) -> Result<Self<Compact>, DataError>;
 
     /// Creates a currency formatter for narrow compact formatting.
-    pub fn try_new_narrow_compact(...) -> Result<Self, DataError>;
+    pub fn try_new_narrow_compact(...) -> Result<Self<Compact>, DataError>;
 
     /// Creates a currency formatter for long compact formatting with verbose names (future).
-    pub fn try_new_long_verbose(...) -> Result<Self, DataError>;
+    pub fn try_new_long_verbose(...) -> Result<Self<Compact>, DataError>;
 
     // ... etc.
 }
