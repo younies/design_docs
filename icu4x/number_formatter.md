@@ -38,6 +38,17 @@ This section discusses the design options for currency formatting, including the
 
 In this option, we use a single `CurrencyFormatter<T>` struct where `T` represents the value representation (Decimal, Compact, or Scientific). This provides a unified type while allowing constructors to be partitioned by capability using trait bounds and concrete implementations.
 
+```mermaid
+graph TD
+    CF["CurrencyFormatter<T>"] --> Dec["T = Decimal"]
+    CF --> Comp["T = Compact"]
+    CF --> Sci["T = Scientific"]
+
+    Dec --> DecCons["Constructors:<br>- try_new_long()<br>- try_new_short()<br>- try_new_narrow()"]
+    Comp --> CompCons["Constructors:<br>- try_new_long_compact()<br>- try_new_short_compact()<br>- try_new_narrow_compact()<br>- try_new_long_verbose()"]
+    Sci --> SciCons["Constructors:<br>- try_new_long_scientific()<br>- try_new_short_scientific()<br>- try_new_narrow_scientific()"]
+```
+
 ```rust
 pub trait ValueRepresentation {}
 
@@ -102,6 +113,16 @@ In this option, we define separate structs for each major formatting style. This
 - **`LongCompactCurrencyFormatter`**: For compact formatting with long currency names (e.g., `12 thousand US dollars`).
 - **`ScientificCurrencyFormatter`**: For scientific formatting with short or narrow symbols (e.g., `1E+5 USD`).
 - **`LongScientificCurrencyFormatter`**: For scientific formatting with long currency names (e.g., `1E+5 US dollars`).
+
+```mermaid
+graph TD
+    CF[CurrencyFormatter] --> CF_Desc["Standard short/narrow symbols<br>(e.g., $10.00, US$10.00)"]
+    LCF[LongCurrencyFormatter] --> LCF_Desc["Long currency names<br>(e.g., 10.00 US dollars)"]
+    CCF[CompactCurrencyFormatter] --> CCF_Desc["Compact with short/narrow symbols<br>(e.g., $12K)"]
+    LCCF[LongCompactCurrencyFormatter] --> LCCF_Desc["Compact with long names<br>(e.g., 12 thousand US dollars)"]
+    SCF[ScientificCurrencyFormatter] --> SCF_Desc["Scientific with short/narrow symbols<br>(e.g., 1E+5 USD)"]
+    LSCF[LongScientificCurrencyFormatter] --> LSCF_Desc["Scientific with long names<br>(e.g., 1E+5 US dollars)"]
+```
 
 ```rust
 // Standard short/narrow formatter
