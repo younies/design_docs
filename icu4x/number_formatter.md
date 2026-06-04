@@ -24,7 +24,7 @@ This section discusses the design options for currency formatting, including the
 
 ### Requirements
 
-1. **Format shape/length**: There are multiple formatting shapes and lengths. For example:
+1. **Format length**: There are multiple formatting shapes and lengths. For example:
    - **Long**: `1 US dollar` / `2 US dollars`
    - **Short**: `1 USD`
    - **Narrow**: `$1`
@@ -62,100 +62,47 @@ impl CurrencyFormatter {
     /// Creates a currency formatter for long compact formatting.
     pub fn try_new_long_compact(...) -> Result<Self, DataError>;
 
+    /// Creates a currency formatter for short compact formatting.
+    pub fn try_new_short_compact(...) -> Result<Self, DataError>;
+
+    /// Creates a currency formatter for narrow compact formatting.
+    pub fn try_new_narrow_compact(...) -> Result<Self, DataError>;
+
+    /// Creates a currency formatter for long compact formatting with verbose names (future).
+    pub fn try_new_long_verbose(...) -> Result<Self, DataError>;
+
     // ... etc.
 }
 ```
 
-## Core Principles
+#### Option 2: Separate structs for each formatting style
 
-- **Zero-Copy**: Data is loaded from the data provider with minimal overhead and no unnecessary copies.
-- **Zero-Allocation**: Formatting operations utilize the `Writeable` trait to write directly to a sink (e.g., a string buffer or a stream) without intermediate allocations.
-- **Separation of Concerns**: Logic is separated from data. Data is loaded dynamically via `DataProvider`.
-- **Type Safety**: Strong types are used to prevent errors (e.g., `CurrencyCode`, `MeasureUnitCategory`).
+In this option, we define separate structs for each major formatting style. This allows each struct to only load the data it strictly needs, and provides a clearer separation of concerns.
 
-## Components
-
-### 1. Input: `FixedDecimal`
-
-Instead of formatting floating-point numbers directly (which can introduce rounding errors), ICU4X uses `FixedDecimal` (from the `fixed_decimal` crate) as the primary input for formatting.
-
-- Represents a decimal number with fixed precision.
-- Keeps track of sign, integer digits, and fractional digits.
-- Supports operations like shifting decimal points without losing precision.
-
-### 2. Decimal Formatting (`icu_decimal`)
-
-The `icu_decimal` crate provides the foundation for all number formatting.
-
-#### `DecimalFormatter`
-- Formats `FixedDecimal` into localized representations.
-- **Data Dependencies**:
-  - `DecimalSymbolsV1`: Contains localized symbols (decimal separator, grouping separator, plus/minus signs).
-  - `DecimalDigitsV1`: Contains localized digit characters (e.g., Latin digits, Bangla digits).
-- **Features**:
-  - Grouping sizes and separators based on locale.
-  - Numbering system resolution (e.g., `-u-nu-thai`).
-
-#### `CompactDecimalFormatter`
-- Formats numbers in compact notation (e.g., `1.2M` instead of `1,200,000`).
-- Uses plural rules to select correct patterns based on the magnitude of the number.
-
-### 3. Currency Formatting (`icu_experimental::dimension::currency`)
-
-Currency formatting is located in the experimental area and supports various widths and styles.
-
-#### `CurrencyFormatter`
-- Used for formatting monetary values with short or narrow symbols (e.g., `$10.00`, `US$10.00`).
-- **Internal Mechanism**:
-  - Resolves the currency symbol and pattern (e.g., `¤{0}` or `{0} ¤`) from `CurrencyEssentialsV1` data.
-  - Uses `DecimalFormatter` to format the numeric value.
-  - Interpolates the formatted number and currency symbol into the pattern.
-
-#### `LongCurrencyFormatter`
-- Used for formatting monetary values with long names (e.g., `10.00 US dollars`).
-- **Internal Mechanism**:
-  - Requires `PluralRules` to select the correct plural form of the currency name (e.g., "dollar" vs "dollars").
-  - Interpolates the formatted number and localized currency name.
-
-#### `CompactCurrencyFormatter`
-- Combines compact decimal formatting with currency formatting (e.g., `$12K`).
-- **Internal Mechanism**:
-  - Obtains the compact decimal pattern and significand.
-  - Formats the significand.
-  - Interpolates the compact representation into the currency pattern.
-
-### 4. Unit Formatting (`icu_experimental::dimension::units`)
-
-Unit formatting is transitioning to a more type-safe "categorized" approach.
-
-#### `UnitsFormatter` (Legacy)
-- A generic formatter for unit values.
-- Being deprecated in favor of `CategorizedFormatter`.
-
-#### `CategorizedFormatter`
-- A type-safe formatter generic over `MeasureUnitCategory` (e.g., `Area`, `Duration`).
-- **Features**:
-  - Prevents mixing units of different categories.
-  - Uses `UnitsDisplayNamesV1` to load localized unit names.
-  - Uses `PluralRules` to select correct patterns based on the value (e.g., "1 meter" vs "2 meters").
-
-## Key Formatting Trait: `Writeable`
-
-All formatters return intermediate structures that implement the `writeable::Writeable` trait.
-
-- Enables formatting directly to a `PartsWrite` sink.
-- Supports "parts" annotation, allowing the caller to identify which parts of the output string correspond to the currency symbol, digits, grouping separators, etc. (useful for UI styling).
+- **`CurrencyFormatter`**: For standard formatting with short or narrow symbols (e.g., `$10.00`, `US$10.00`).
+- **`LongCurrencyFormatter`**: For formatting with long currency names (e.g., `10.00 US dollars`).
+- **`CompactCurrencyFormatter`**: For compact formatting with short or narrow symbols (e.g., `$12K`).
+- **`LongCompactCurrencyFormatter`**: For compact formatting with long currency names (e.g., `12 thousand US dollars`).
+- **`ScientificCurrencyFormatter`**: For scientific formatting with short or narrow symbols (e.g., `1E+5 USD`).
+- **`LongScientificCurrencyFormatter`**: For scientific formatting with long currency names (e.g., `1E+5 US dollars`).
 
 ```rust
-pub trait Writeable {
-    fn write_to_parts<S: PartsWrite + ?Sized>(&self, sink: &mut S) -> Result<(), Error>;
-    // ...
-}
+// Standard short/narrow formatter
+pub struct CurrencyFormatter;
+
+// Long name formatter
+pub struct LongCurrencyFormatter;
+
+// Compact short/narrow formatter
+pub struct CompactCurrencyFormatter;
+
+// Compact long name formatter
+pub struct LongCompactCurrencyFormatter;
+
+// Scientific short/narrow formatter
+pub struct ScientificCurrencyFormatter;
+
+// Scientific long name formatter
+pub struct LongScientificCurrencyFormatter;
 ```
 
-## Data Loading and Providers
-
-All constructors support both compiled data (`try_new`) and dynamic data loading via `DataProvider` (`try_new_unstable`).
-
-- `try_new_unstable` allows for tree-shaking and dynamic data loading.
-- Markers are used to identify the required data (e.g., `DecimalSymbolsV1::MARKER`).
