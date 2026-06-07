@@ -145,5 +145,5 @@ pub struct LongScientificCurrencyFormatter;
 ```
 
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbNjg2NjQxMTEyLC0xMjU3MjY2MTM0XX0=
+eyJoaXN0b3J5IjpbNjg2NjQxMTEyXX0=
 -->
