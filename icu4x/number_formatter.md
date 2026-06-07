@@ -143,8 +143,7 @@ pub struct ScientificCurrencyFormatter;
 // Scientific long name formatter
 pub struct LongScientificCurrencyFormatter;
 ```
-hdf
+
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTE0NTUxMTYyMDYsLTEyNTcyNjYxMzRdfQ
-==
+eyJoaXN0b3J5IjpbNjg2NjQxMTEyLC0xMjU3MjY2MTM0XX0=
 -->
