@@ -45,8 +45,8 @@ graph TD
     CF --> Sci["T = Scientific"]
 
     Dec --> DecCons["Constructors:<br>- try_new_long()<br>- try_new_short()<br>- try_new_narrow()"]
-    Comp --> CompCons["Constructors:<br>- try_new_long_compact()<br>- try_new_short_compact()<br>- try_new_narrow_compact()<br>- try_new_long_verbose()"]
-    Sci --> SciCons["Constructors:<br>- try_new_long_scientific()<br>- try_new_short_scientific()<br>- try_new_narrow_scientific()"]
+    Comp --> CompCons["Constructors:<br>- try_new_long()<br>- try_new_short()<br>- try_new_narrow()"]
+    Sci --> SciCons["Constructors:<br>- try_new_long()<br>- try_new_short()<br>- try_new_narrow()"]
 ```
 
 ```rust
@@ -79,27 +79,24 @@ impl CurrencyFormatter<Decimal> {
 
 impl CurrencyFormatter<Scientific> {
     /// Creates a currency formatter for long scientific formatting.
-    pub fn try_new_long_scientific(...) -> Result<Self, DataError>;
+    pub fn try_new_long(...) -> Result<Self, DataError>;
 
     /// Creates a currency formatter for short scientific formatting.
-    pub fn try_new_short_scientific(...) -> Result<Self, DataError>;
+    pub fn try_new_short(...) -> Result<Self, DataError>;
 
     /// Creates a currency formatter for narrow scientific formatting.
-    pub fn try_new_narrow_scientific(...) -> Result<Self, DataError>;
+    pub fn try_new_narrow(...) -> Result<Self, DataError>;
 }
 
 impl CurrencyFormatter<Compact> {
     /// Creates a currency formatter for long compact formatting.
-    pub fn try_new_long_compact(...) -> Result<Self, DataError>;
+    pub fn try_new_long(...) -> Result<Self, DataError>;
 
     /// Creates a currency formatter for short compact formatting.
-    pub fn try_new_short_compact(...) -> Result<Self, DataError>;
+    pub fn try_new_short(...) -> Result<Self, DataError>;
 
     /// Creates a currency formatter for narrow compact formatting.
-    pub fn try_new_narrow_compact(...) -> Result<Self, DataError>;
-
-    /// Creates a currency formatter for long compact formatting with verbose names (future).
-    pub fn try_new_long_verbose(...) -> Result<Self, DataError>;
+    pub fn try_new_narrow(...) -> Result<Self, DataError>;
 }
 ```
 
