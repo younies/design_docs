@@ -34,7 +34,8 @@ This section discusses the design options for currency formatting, including the
 
 ### Designs
 
-#### Option 1: Single struct with generic value representation
+#### Option 1: Single struct with generic value representation *(Choosed)* https://github.com/unicode-org/icu4x/pull/8045
+
 
 In this option, we use a single `CurrencyFormatter<T>` struct where `T` represents the value representation (Decimal, Compact, or Scientific). This provides a unified type while allowing constructors to be partitioned by capability using trait bounds and concrete implementations.
 
@@ -45,8 +46,8 @@ graph TD
     CF --> Sci["T = Scientific"]
 
     Dec --> DecCons["Constructors:<br>- try_new_long()<br>- try_new_short()<br>- try_new_narrow()"]
-    Comp --> CompCons["Constructors:<br>- try_new_long()<br>- try_new_short()<br>- try_new_narrow()"]
-    Sci --> SciCons["Constructors:<br>- try_new_long()<br>- try_new_short()<br>- try_new_narrow()"]
+    Comp --> CompCons["Constructors:<br>- try_new_long_compact()<br>- try_new_short_compact()<br>- try_new_narrow_compact()<br>- try_new_long_verbose()"]
+    Sci --> SciCons["Constructors:<br>- try_new_long_scientific()<br>- try_new_short_scientific()<br>- try_new_narrow_scientific()"]
 ```
 
 ```rust
@@ -79,26 +80,33 @@ impl CurrencyFormatter<Decimal> {
 
 impl CurrencyFormatter<Scientific> {
     /// Creates a currency formatter for long scientific formatting.
-    pub fn try_new_long(...) -> Result<Self, DataError>;
+    pub fn try_new_long_scientific(...) -> Result<Self, DataError>;
 
     /// Creates a currency formatter for short scientific formatting.
-    pub fn try_new_short(...) -> Result<Self, DataError>;
+    pub fn try_new_short_scientific(...) -> Result<Self, DataError>;
 
     /// Creates a currency formatter for narrow scientific formatting.
-    pub fn try_new_narrow(...) -> Result<Self, DataError>;
+    pub fn try_new_narrow_scientific(...) -> Result<Self, DataError>;
 }
 
 impl CurrencyFormatter<Compact> {
     /// Creates a currency formatter for long compact formatting.
-    pub fn try_new_long(...) -> Result<Self, DataError>;
+    pub fn try_new_long_compact(...) -> Result<Self, DataError>;
 
     /// Creates a currency formatter for short compact formatting.
-    pub fn try_new_short(...) -> Result<Self, DataError>;
+    pub fn try_new_short_compact(...) -> Result<Self, DataError>;
 
     /// Creates a currency formatter for narrow compact formatting.
-    pub fn try_new_narrow(...) -> Result<Self, DataError>;
+    pub fn try_new_narrow_compact(...) -> Result<Self, DataError>;
+
+    /// Creates a currency formatter for long compact formatting with verbose names (future).
+    pub fn try_new_long_verbose(...) -> Result<Self, DataError>;
 }
 ```
+
+##### Current Currencies Providers
+
+######  HERE
 
 #### Option 2: Separate structs for each formatting style
 
@@ -140,7 +148,3 @@ pub struct ScientificCurrencyFormatter;
 // Scientific long name formatter
 pub struct LongScientificCurrencyFormatter;
 ```
-
-<!--stackedit_data:
-eyJoaXN0b3J5IjpbNjg2NjQxMTEyXX0=
--->
