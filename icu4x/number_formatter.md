@@ -104,9 +104,40 @@ impl CurrencyFormatter<Compact> {
 }
 ```
 
-##### Current Currencies Providers
+##### Underlying Currencies Providers & Markers
 
-######  HERE
+To guarantee modular, zero-copy formatting without memory overhead, currency data is decoupled into four highly specialized data provider structs and their corresponding markers:
+
+###### 1. `CurrencyEssentialsV1`
+- **Data Marker**: `CurrencyEssentialsV1`
+- **Scope & Keying**: Keyed strictly by `Locale`.
+- **Payload & Architectural Purpose**:
+  - Encapsulates the minimal core data required for standard short and narrow monetary output.
+  - **Symbols**: Holds both the short currency symbol string (e.g., `"USD"`, `"EUR"`) and the narrow currency symbol string (e.g., `"$"`, `"€"`).
+  - **Layout Patterns**: Contains relative positioning placeholders dictating exactly where the symbol sits relative to the numeric string (e.g., prefix vs. suffix, spaced vs. unspaced).
+
+###### 2. `CurrencyExtendedDataV1`
+- **Data Marker**: `CurrencyExtendedDataV1`
+- **Scope & Keying**: Keyed by `Locale` and `DataMarkerAttributes` (derived dynamically from the active `CurrencyCode`).
+- **Payload & Architectural Purpose**:
+  - Designed specifically for long, verbose currency formatting.
+  - **Pluralized Names**: Stores the complete dictionary of localized display names for a currency under all cardinal plural rules (e.g., `"US dollar"` for `One`, `"US dollars"` for `Other`).
+  - Keying by `DataMarkerAttributes` allows massive currency dictionaries to be sliced into lightweight, per-currency payloads, completely eliminating monolithic downloads.
+
+###### 3. `CurrencyPatternsDataV1`
+- **Data Marker**: `CurrencyPatternsDataV1`
+- **Scope & Keying**: Keyed by `Locale`.
+- **Payload & Architectural Purpose**:
+  - Defines the sentence structure necessary when combining formatted numbers with long verbose display names.
+  - **Multi-Placeholder Interpolation**: Holds double-placeholder patterns that dictate the exact grammatical arrangement of the numeric significand string and the currency display name string across different plural categories.
+
+###### 4. `ShortCurrencyCompactV1`
+- **Data Marker**: `ShortCurrencyCompactV1`
+- **Scope & Keying**: Keyed by `Locale`.
+- **Payload & Architectural Purpose**:
+  - Dedicated entirely to specialized compact monetary formatting.
+  - **Compact Patterns**: Encapsulates standard compact notation patterns (`"10K"`, `"12M"`) as well as specialized `"alpha_next_to_number"` patterns.
+  - **Adjacency Rules**: Governs precise spacing adjustments required when an alphabetical currency code directly touches a compact significand letter (e.g., ensuring clear visual separation between `"USD"` and `"K"`).
 
 #### Option 2: Separate structs for each formatting style
 
