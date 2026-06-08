@@ -139,6 +139,16 @@ To guarantee modular, zero-copy formatting without memory overhead, currency dat
   - **Compact Patterns**: Encapsulates standard compact notation patterns (`"10K"`, `"12M"`) as well as specialized `"alpha_next_to_number"` patterns.
   - **Adjacency Rules**: Governs precise spacing adjustments required when an alphabetical currency code directly touches a compact significand letter (e.g., ensuring clear visual separation between `"USD"` and `"K"`).
 
+##### Pros and Cons of Option 1
+
+- **Pros**:
+  - **Unified Type Ergonomics**: Provides a single, cohesive struct identity (`CurrencyFormatter`) for high-level application code to pass around.
+  - **Typestate Enforcement**: Leverages compile-time generic marker types (`Decimal`, `Compact`, `Scientific`) to guarantee invalid formatting operations cannot be constructed.
+  - **Logic Consolidation**: Centralizes shared boilerplate, option handling, and common trait implementations (`Debug`, `Writeable`), minimizing code duplication.
+- **Cons**:
+  - **Internal Multiplexing Complexity**: Requires internal storage enums (`DecimalCurrencyData`, `CompactCurrencyData`) to route execution dynamically between standard and long format payloads.
+  - **Constructor Crowding**: Grouping many polymorphic constructors (`try_new_short`, `try_new_long_compact`, etc.) under one generic type produces denser API documentation pages.
+
 #### Option 2: Separate structs for each formatting style
 
 In this option, we define separate structs for each major formatting style. This allows each struct to only load the data it strictly needs, and provides a clearer separation of concerns.
@@ -179,3 +189,13 @@ pub struct ScientificCurrencyFormatter;
 // Scientific long name formatter
 pub struct LongScientificCurrencyFormatter;
 ```
+
+##### Pros and Cons of Option 2
+
+- **Pros**:
+  - **Pristine Separation of Concerns**: Each struct possesses a direct, single-purpose internal payload struct entirely free of runtime multiplexing enums.
+  - **Focused API Documentation**: Each struct's documentation page is exceptionally lean, displaying only the exact constructors relevant to its precise formatting mode.
+  - **Granular Dead Code Elimination**: Allows the Rust compiler to effortlessly strip out code for unused formatting styles (e.g., eliminating compact formatters if an app only uses standard decimals).
+- **Cons**:
+  - **API Surface Fragmentation**: Forces users to memorize and import up to six distinct top-level struct names (`CurrencyFormatter`, `LongCurrencyFormatter`, `CompactCurrencyFormatter`, etc.).
+  - **Boilerplate Duplication**: Reimplements identical underlying sign delegation, validation checks, and preference conversions across multiple separate structs.
