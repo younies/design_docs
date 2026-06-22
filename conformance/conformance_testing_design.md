@@ -95,11 +95,10 @@ This section details the proposed dimensions for decimal formatting, indicating 
 | Dimension Column | Explanation | TR35 Spec Reference (Link & Snippet) | Core Set | Extended Set | Default Value / Behavior if Empty |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `locale` <br> **Java Name:** `Locale` | The locale identifier determines the linguistic and regional formatting rules (e.g., decimal separator, grouping separator, digit symbols). | [UTS #35 Locale](https://www.unicode.org/reports/tr35/#Locale) <br> *"A locale identifier is a structured string that identifies a particular set of language, script, region, and variant preferences."* | `en` (Standard Latin, default plurals)<br>`fr` (French, spaces as grouping separators)<br>`ar` (Arabic, Eastern Arabic digits, right-to-left)<br>`hi` (Hindi, non-standard grouping sizes like 3,2,2)<br>`ru` (Russian, complex plural rules)<br>`da` (Danish, different decimal/grouping separators) | All other modern CLDR locales (e.g., `zh`, `ja`, `de`, `es`, `fi`, etc.) | `en` |
-| `value` <br> **Java Name:** `Value` | The input numeric value (a finite number, negative zero, NaN, or Infinity) to be formatted. | [TR35 Number Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br> *"The pattern defines the layout of the formatted number, including grouping, decimals, and sign."* | `0`, `-0`<br>`1`, `-1`<br>`1.23`, `-1.23`<br>`1000`, `100000`<br>`1000000000`<br>`NaN`, `Infinity`, `-Infinity`<br>Edge cases: `0.0001`, `999.999` (forcing rounding transitions) | Comprehensive scale of numbers: exponents, very long decimals, specific values triggering all plural categories (zero, one, two, few, many, other) per locale. | *Mandatory* (No default) | [TR35 Number Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br> *"The pattern defines the layout of the formatted number, including grouping, decimals, and sign."* |
+| `value` <br> **Java Name:** `Value` | The input numeric value (a finite number, negative zero, NaN, or Infinity) to be formatted. | [TR35 Number Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br> *"The pattern defines the layout of the formatted number, including grouping, decimals, and sign."* | `empty` (Omitted/null value)<br>`0`, `-0`<br>`1`, `-1`<br>`1.23`, `-1.23`<br>`1000`, `100000`<br>`1000000000`<br>`NaN`, `Infinity`, `-Infinity`<br>Edge cases: `0.0001`, `999.999` (forcing rounding transitions) | Comprehensive scale of numbers: exponents, very long decimals, specific values triggering all plural categories (zero, one, two, few, many, other) per locale. | `empty` (Omitted value defaults to empty/blank output) |
 | `numbering_system` <br> **Java Name:** `NumberingSystem` | Specifies the set of digit characters and rules used to render the numbers (e.g., standard Latin vs. Eastern Arabic-Indic digits). | [TR35 Numbering Systems](https://www.unicode.org/reports/tr35/tr35-numbers.html#Numbering_Systems) <br> *"Numbering systems define the set of digits used to represent numbers, such as 'latn' (0-9) or 'arab' (Eastern Arabic digits)."* | `latn` (Latin digits)<br>`arab` (Arabic-Indic digits)<br>`deva` (Devanagari digits) | All other CLDR numbering systems (e.g., `hans`, `beng`, `thai`) | Determined by `locale` |
 | `decimal_format_length` <br> **Java Name:** `DecimalFormatLength` | Specifies the format length style, allowing compact representations of numbers. | [TR35 Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Number_Formats) <br> *"Compact number formats are designed for short, user-friendly representations of large numbers, e.g., '10K' or '10 thousand'."* | `compact_short` (e.g., 1.2K)<br>`compact_long` (e.g., 1.2 thousand) | *None* (Dimension is small) | `empty` (Falls back to standard decimal formatting) |
 | `sign_display` <br> **Java Name:** `SignDisplay` | Controls when and how the positive or negative signs are displayed (e.g., always show sign, or only for negative numbers). | [TR35 Number Patterns](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br> *"A pattern can contain a positive and a negative subpattern, e.g., '#,##0.00;(#,##0.00)'. Sign display options override how these subpatterns are applied."* | `auto` (Minus sign for negative only)<br>`always` (Always show sign except NaN)<br>`never` (Never show sign)<br>`exceptZero` (Show sign for positive and negative, not zero) | *None* (Dimension is small) | `auto` |
-| `grouping_strategy` <br> **Java Name:** `GroupingStrategy` | Defines the rules for using grouping (thousands) separators, such as forcing them, disabling them, or applying locale-specific minimum digit limits. | [TR35 Grouping Sizes](https://www.unicode.org/reports/tr35/tr35-numbers.html#Grouping_Sizes) <br> *"Grouping sizes define the number of digits between grouping separators. Some locales use primary and secondary grouping (e.g., Hindi 3,2,2)."* | `auto` (Standard CLDR grouping)<br>`always` (Force grouping even for small numbers)<br>`never` (No grouping separators)<br>`min2` (Group only if there are at least 2 digits before the separator) | *None* (Dimension is small) | `auto` |
 | `rounding_mode` <br> **Java Name:** `RoundingMode` | Determines the mathematical algorithm used when rounding numbers to fit the precision limits (e.g., round half-to-even, round towards zero). | [TR35 Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Round_Rounding_Increment) <br> *"Rounding increment and mode define how numbers are rounded to the nearest increment, e.g., rounding half to even."* | `halfEven` (IEEE 754 Round half to even)<br>`halfUp` (Round half away from zero)<br>`down` (Round towards zero) | Other rounding modes: `up`, `ceiling`, `floor`, `halfDown` | `halfEven` |
 | `precision` <br> **Java Name:** `Precision` | Controls the constraints on the number of fraction digits or significant digits to be displayed (minimum and maximum limits). | [TR35 Significant Digits](https://www.unicode.org/reports/tr35/tr35-numbers.html#Significant_Digits) <br> *"Controls the number of fraction digits or significant digits displayed, checking minimum and maximum bounds."* | Standard fraction limits (e.g., Min: 0, Max: 3)<br>Significant digits limits (e.g., Min: 1, Max: 5) | Exhaustive combinations of Min/Max fraction and significant digits. | Min fraction: 0, Max fraction: 3, Significant digits: undefined. |
 
@@ -137,7 +136,8 @@ public final class DecimalDimensions {
       "da"  // Danish, different decimal/grouping separators
   );
 
-  public static final List<BigDecimal> CORE_VALUES = List.of(
+  public static final List<BigDecimal> CORE_VALUES = java.util.Arrays.asList(
+      null, // Omitted/empty value (tests default behavior)
       BigDecimal.ZERO,
       new BigDecimal("-0"), // Negative zero handling
       BigDecimal.ONE,
@@ -165,10 +165,6 @@ public final class DecimalDimensions {
       SignDisplay.values()
   );
 
-  public static final List<GroupingStrategy> CORE_GROUPING_STRATEGIES = List.of(
-      GroupingStrategy.values()
-  );
-
   public static final List<RoundingMode> CORE_ROUNDING_MODES = List.of(
       RoundingMode.HALF_EVEN, // IEEE 754 Round half to even (default)
       RoundingMode.HALF_UP,   // Round half away from zero
@@ -190,8 +186,6 @@ public final class DecimalDimensions {
   
   public enum SignDisplay { AUTO, ALWAYS, NEVER, EXCEPT_ZERO }
   
-  public enum GroupingStrategy { AUTO, ALWAYS, NEVER, MIN2 }
-  
   public enum RoundingMode { HALF_EVEN, HALF_UP, DOWN, UP, CEILING, FLOOR, HALF_DOWN }
 
   public static class PrecisionConfig {
@@ -212,7 +206,7 @@ public final class DecimalDimensions {
 
   /** 2. Value Dimension */
   public static final Dimension<BigDecimal> VALUE = Dimension.<BigDecimal>builder("value")
-      .mandatory()
+      .withDefault(null) // Null represents omitted/empty value (results in empty string output)
       .withCoreSet(CORE_VALUES)
       .withExtendedSetProvider(ValueGenerator::getExhaustivePluralTriggerValues)
       .build();
@@ -238,20 +232,14 @@ public final class DecimalDimensions {
       .withCoreSet(CORE_SIGN_DISPLAYS)
       .build();
 
-  /** 6. Grouping Strategy Dimension */
-  public static final Dimension<GroupingStrategy> GROUPING_STRATEGY = Dimension.<GroupingStrategy>builder("grouping_strategy")
-      .withDefault(GroupingStrategy.AUTO)
-      .withCoreSet(CORE_GROUPING_STRATEGIES)
-      .build();
-
-  /** 7. Rounding Mode Dimension */
+  /** 6. Rounding Mode Dimension */
   public static final Dimension<RoundingMode> ROUNDING_MODE = Dimension.<RoundingMode>builder("rounding_mode")
       .withDefault(RoundingMode.HALF_EVEN)
       .withCoreSet(CORE_ROUNDING_MODES)
       .withExtendedSet(List.of(RoundingMode.UP, RoundingMode.CEILING, RoundingMode.FLOOR, RoundingMode.HALF_DOWN))
       .build();
 
-  /** 8. Precision Dimension */
+  /** 7. Precision Dimension */
   public static final Dimension<PrecisionConfig> PRECISION = Dimension.<PrecisionConfig>builder("precision")
       .withDefault(PrecisionConfig.create(0, 3))
       .withCoreSet(CORE_PRECISIONS)
