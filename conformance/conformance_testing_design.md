@@ -41,7 +41,7 @@ graph TD
     
     Combinator -->|Cartesian Product / Filtering| TSVOut[TSV Output Files]
     
-    subgraph Output Files (Decimal)
+    subgraph "Output Files (Decimal)"
         TSVOut --> CoreTSV[decimals.tsv <br> Core Locales x Core Styles x Core Numbers]
         TSVOut --> ExtLocTSV[decimals_modern_locales.tsv <br> Extended Locales x Core Styles x Core Numbers]
         TSVOut --> ExtNumTSV[decimals_extended_numbers.tsv <br> Core Locales x Core Styles x Extended Numbers]
