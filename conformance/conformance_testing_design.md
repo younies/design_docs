@@ -97,7 +97,7 @@ This section details the proposed dimensions for decimal formatting, indicating 
 | `locale` <br> **Java Name:** `Locale` | The locale identifier determines the linguistic and regional formatting rules (e.g., decimal separator, grouping separator, digit symbols). | [UTS #35 Locale](https://www.unicode.org/reports/tr35/#Locale) <br> *"A locale identifier is a structured string that identifies a particular set of language, script, region, and variant preferences."* | `en` (Standard Latin, default plurals)<br>`fr` (French, spaces as grouping separators)<br>`ar` (Arabic, Eastern Arabic digits, right-to-left)<br>`hi` (Hindi, non-standard grouping sizes like 3,2,2)<br>`ru` (Russian, complex plural rules)<br>`da` (Danish, different decimal/grouping separators) | All other modern CLDR locales (e.g., `zh`, `ja`, `de`, `es`, `fi`, etc.) | `en` |
 | `value` <br> **Java Name:** `Value` | The input numeric value (a finite number, negative zero, NaN, or Infinity) to be formatted. | [TR35 Number Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br> *"The pattern defines the layout of the formatted number, including grouping, decimals, and sign."* | `0`, `-0`<br>`1`, `-1`<br>`1.23`, `-1.23`<br>`1000`, `100000`<br>`1000000000`<br>`NaN`, `Infinity`, `-Infinity`<br>Edge cases: `0.0001`, `999.999` (forcing rounding transitions) | Comprehensive scale of numbers: exponents, very long decimals, specific values triggering all plural categories (zero, one, two, few, many, other) per locale. | *Mandatory* (No default) | [TR35 Number Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br> *"The pattern defines the layout of the formatted number, including grouping, decimals, and sign."* |
 | `numbering_system` <br> **Java Name:** `NumberingSystem` | Specifies the set of digit characters and rules used to render the numbers (e.g., standard Latin vs. Eastern Arabic-Indic digits). | [TR35 Numbering Systems](https://www.unicode.org/reports/tr35/tr35-numbers.html#Numbering_Systems) <br> *"Numbering systems define the set of digits used to represent numbers, such as 'latn' (0-9) or 'arab' (Eastern Arabic digits)."* | `latn` (Latin digits)<br>`arab` (Arabic-Indic digits)<br>`deva` (Devanagari digits) | All other CLDR numbering systems (e.g., `hans`, `beng`, `thai`) | Determined by `locale` |
-| `compact_style` <br> **Java Name:** `CompactStyle` | Specifies whether to format the number in a compact notation (e.g., '1.2M' or '1.2 million') or standard notation. | [TR35 Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Number_Formats) <br> *"Compact number formats are designed for short, user-friendly representations of large numbers, e.g., '1.2M' or '1.2 million'."* | `none` (Standard decimal)<br>`short` (e.g., 1.2M)<br>`long` (e.g., 1.2 million) | *None* (Dimension is small) | `none` |
+| `decimal_format_length` <br> **Java Name:** `DecimalFormatLength` | Specifies the format length style, allowing compact representations of numbers. | [TR35 Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Number_Formats) <br> *"Compact number formats are designed for short, user-friendly representations of large numbers, e.g., '10K' or '10 thousand'."* | `compact_short` (e.g., 1.2K)<br>`compact_long` (e.g., 1.2 thousand) | *None* (Dimension is small) | `empty` (Falls back to standard decimal formatting) |
 | `sign_display` <br> **Java Name:** `SignDisplay` | Controls when and how the positive or negative signs are displayed (e.g., always show sign, or only for negative numbers). | [TR35 Number Patterns](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br> *"A pattern can contain a positive and a negative subpattern, e.g., '#,##0.00;(#,##0.00)'. Sign display options override how these subpatterns are applied."* | `auto` (Minus sign for negative only)<br>`always` (Always show sign except NaN)<br>`never` (Never show sign)<br>`exceptZero` (Show sign for positive and negative, not zero) | *None* (Dimension is small) | `auto` |
 | `grouping_strategy` <br> **Java Name:** `GroupingStrategy` | Defines the rules for using grouping (thousands) separators, such as forcing them, disabling them, or applying locale-specific minimum digit limits. | [TR35 Grouping Sizes](https://www.unicode.org/reports/tr35/tr35-numbers.html#Grouping_Sizes) <br> *"Grouping sizes define the number of digits between grouping separators. Some locales use primary and secondary grouping (e.g., Hindi 3,2,2)."* | `auto` (Standard CLDR grouping)<br>`always` (Force grouping even for small numbers)<br>`never` (No grouping separators)<br>`min2` (Group only if there are at least 2 digits before the separator) | *None* (Dimension is small) | `auto` |
 | `rounding_mode` <br> **Java Name:** `RoundingMode` | Determines the mathematical algorithm used when rounding numbers to fit the precision limits (e.g., round half-to-even, round towards zero). | [TR35 Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Round_Rounding_Increment) <br> *"Rounding increment and mode define how numbers are rounded to the nearest increment, e.g., rounding half to even."* | `halfEven` (IEEE 754 Round half to even)<br>`halfUp` (Round half away from zero)<br>`down` (Round towards zero) | Other rounding modes: `up`, `ceiling`, `floor`, `halfDown` | `halfEven` |
@@ -157,8 +157,8 @@ public final class DecimalDimensions {
       "deva"  // Devanagari digits
   );
 
-  public static final List<CompactStyle> CORE_COMPACT_STYLES = List.of(
-      CompactStyle.values()
+  public static final List<DecimalFormatLength> CORE_DECIMAL_FORMAT_LENGTHS = List.of(
+      DecimalFormatLength.values()
   );
 
   public static final List<SignDisplay> CORE_SIGN_DISPLAYS = List.of(
@@ -186,7 +186,7 @@ public final class DecimalDimensions {
   // ENUMS & CONFIG CLASSES
   // ==========================================================================
 
-  public enum CompactStyle { NONE, SHORT, LONG }
+  public enum DecimalFormatLength { COMPACT_SHORT, COMPACT_LONG }
   
   public enum SignDisplay { AUTO, ALWAYS, NEVER, EXCEPT_ZERO }
   
@@ -226,10 +226,10 @@ public final class DecimalDimensions {
       .withExtendedSetProvider(() -> LocaleRegistry.getAllNumberingSystemsExcept(CORE_NUMBERING_SYSTEMS))
       .build();
 
-  /** 4. Compact Style Dimension */
-  public static final Dimension<CompactStyle> COMPACT_STYLE = Dimension.<CompactStyle>builder("compact_style")
-      .withDefault(CompactStyle.NONE)
-      .withCoreSet(CORE_COMPACT_STYLES)
+  /** 4. Decimal Format Length Dimension */
+  public static final Dimension<DecimalFormatLength> DECIMAL_FORMAT_LENGTH = Dimension.<DecimalFormatLength>builder("decimal_format_length")
+      .withDefault(null) // Null/empty represents standard decimal formatting
+      .withCoreSet(CORE_DECIMAL_FORMAT_LENGTHS)
       .build();
 
   /** 5. Sign Display Dimension */
@@ -272,6 +272,7 @@ Currency formatting inherits many dimensions from Decimal formatting (such as `l
 | `currency_code` <br> **Java Name:** `CurrencyCode` | The ISO 4217 three-letter code of the currency, which determines the currency symbol, default decimal places, and rounding rules. | [TR35 Currencies](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br> *"Currencies are defined by ISO 4217 codes. Localized data provides the symbols, names, and decimal/rounding overrides for each code."* | `USD` (Standard 2-decimal)<br>`EUR` (Standard 2-decimal, space/suffix in some locales)<br>`JPY` (0-decimal currency)<br>`IQD` (3-decimal currency)<br>`CHF` (Cash rounding to nearest 0.05)<br>`CVE` (Escudo, symbol acts as decimal separator: 100$00) | All other ISO 4217 currency codes | *Mandatory* (No default) |
 | `currency_style` <br> **Java Name:** `CurrencyStyle` | Selects between standard formatting (e.g., '$1.00') or accounting formatting (which often uses parentheses for negative values: '($1.00)'). | [TR35 Currency Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Formats) <br> *"Specifies standard versus accounting styles (e.g., using parentheses for negative values in accounting: ($1.00))."* | `standard` (e.g., $1,000.00)<br>`accounting` (e.g., ($1,000.00) for negative)<br>`name` (e.g., 1,000.00 US dollars) | *None* (Dimension is small) | `standard` |
 | `currency_width` <br> **Java Name:** `CurrencyWidth` | Determines the display width of the currency identifier (e.g., standard symbol '$', narrow symbol '$', or ISO code 'USD'). | [TR35 Currencies](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br> *"Determines if the display uses the standard symbol ($), the narrow symbol (if available), or the ISO code (USD)."* | `symbol` (Standard symbol: $)<br>`narrow` (Narrow symbol if exists: $)<br>`code` (ISO code: USD) | *None* (Dimension is small) | `symbol` |
+| `decimal_format_length` <br> **Java Name:** `DecimalFormatLength` | Specifies the format length style for compact currency representation. <br> *Note: `compact_long` is not added/supported yet.* | [TR35 Compact Currency Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Number_Formats) <br> *"Compact number formats can also be applied to currencies, e.g., '$1.2M'. Only the short style is currently supported."* | `compact_short` (e.g., $1.2M) | *None* (Dimension is small) | `empty` (Falls back to standard currency formatting) |
 | `cash_rounding` <br> **Java Name:** `CashRounding` | Specifies whether to apply currency-specific cash rounding rules, which are typically used for physical cash transactions in specific countries. | [TR35 Cash Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Cash_Rounding) <br> *"In some countries, cash transactions are rounded to a specific increment (e.g., 5 cents in Canada/Switzerland) while electronic transactions are not."* | `false` (Standard mathematical rounding)<br>`true` (Apply currency-specific cash rounding, e.g., Swiss 5-cent rounding) | *None* | `false` |
 | `plural_context` <br> **Java Name:** `PluralContext` | Determines the plural category context to ensure correct grammatical agreement when formatting with the long currency name (e.g., '1.00 US dollar' vs. '2.00 US dollars'). | [TR35 Language Plural Rules](https://www.unicode.org/reports/tr35/tr35-numbers.html#Language_Plural_Rules) <br> *"When formatting with currency names, the name must agree in plural form with the formatted number according to the locale's plural rules (e.g., '1 US dollar' vs '2 US dollars')."* | `other` (default context)<br>`one` (singular context, e.g., "1.00 US dollar")<br>`many` (e.g., "1.00 US dollars" - locale dependent) | *None* (Controlled primarily by the input `value` and `locale` combination) | `other` |
 
@@ -316,6 +317,10 @@ public final class CurrencyDimensions {
       CurrencyWidth.values()
   );
 
+  public static final List<DecimalFormatLength> CORE_DECIMAL_FORMAT_LENGTHS = List.of(
+      DecimalFormatLength.values()
+  );
+
   public static final List<Boolean> CORE_CASH_ROUNDING_OPTIONS = List.of(
       Boolean.TRUE,
       Boolean.FALSE
@@ -332,6 +337,10 @@ public final class CurrencyDimensions {
   public enum CurrencyStyle { STANDARD, ACCOUNTING, NAME }
 
   public enum CurrencyWidth { SYMBOL, NARROW, CODE }
+
+  public enum DecimalFormatLength { 
+    COMPACT_SHORT // Note: compact_long is not added/supported yet for currencies
+  }
 
   public enum PluralContext { OTHER, ONE, MANY }
 
@@ -358,13 +367,19 @@ public final class CurrencyDimensions {
       .withCoreSet(CORE_CURRENCY_WIDTHS)
       .build();
 
-  /** 4. Cash Rounding Dimension */
+  /** 4. Decimal Format Length Dimension */
+  public static final Dimension<DecimalFormatLength> DECIMAL_FORMAT_LENGTH = Dimension.<DecimalFormatLength>builder("decimal_format_length")
+      .withDefault(null) // Null/empty represents standard currency formatting
+      .withCoreSet(CORE_DECIMAL_FORMAT_LENGTHS)
+      .build();
+
+  /** 5. Cash Rounding Dimension */
   public static final Dimension<Boolean> CASH_ROUNDING = Dimension.<Boolean>builder("cash_rounding")
       .withDefault(false)
       .withCoreSet(CORE_CASH_ROUNDING_OPTIONS)
       .build();
 
-  /** 5. Plural Context Dimension */
+  /** 6. Plural Context Dimension */
   public static final Dimension<PluralContext> PLURAL_CONTEXT = Dimension.<PluralContext>builder("plural_context")
       .withDefault(PluralContext.OTHER)
       .withCoreSet(CORE_PLURAL_CONTEXTS)
