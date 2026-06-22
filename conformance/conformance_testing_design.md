@@ -136,7 +136,7 @@ public final class DecimalDimensions {
       "da"  // Danish, different decimal/grouping separators
   );
 
-  public static final List<BigDecimal> CORE_VALUES = java.util.Arrays.asList(
+  public static final List<Number> CORE_VALUES = java.util.Arrays.asList(
       null, // Omitted/empty value (tests default behavior)
       BigDecimal.ZERO,
       new BigDecimal("-0"), // Negative zero handling
@@ -147,6 +147,9 @@ public final class DecimalDimensions {
       new BigDecimal("1000"),
       new BigDecimal("100000"),
       new BigDecimal("1000000000"),
+      Double.NaN,
+      Double.POSITIVE_INFINITY,
+      Double.NEGATIVE_INFINITY,
       new BigDecimal("0.0001"), // Edge case forcing rounding transitions
       new BigDecimal("999.999")  // Edge case forcing rounding transitions
   );
@@ -205,7 +208,7 @@ public final class DecimalDimensions {
       .build();
 
   /** 2. Value Dimension */
-  public static final Dimension<BigDecimal> VALUE = Dimension.<BigDecimal>builder("value")
+  public static final Dimension<Number> VALUE = Dimension.<Number>builder("value")
       .withDefault(null) // Null represents omitted/empty value (results in empty string output)
       .withCoreSet(CORE_VALUES)
       .withExtendedSetProvider(ValueGenerator::getExhaustivePluralTriggerValues)
