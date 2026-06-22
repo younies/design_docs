@@ -86,16 +86,16 @@ The output of the generator consists of Tab-Separated Values (TSV) files.
 
 This section details the proposed dimensions for decimal formatting, indicating which values constitute the Core and Extended sets, and specifying default behaviors.
 
-| Dimension Column | Core Set | Extended Set | Default Value / Behavior if Empty |
-| :--- | :--- | :--- | :--- |
-| `locale` | `en` (Standard Latin, default plurals)<br>`fr` (French, spaces as grouping separators)<br>`ar` (Arabic, Eastern Arabic digits, right-to-left)<br>`hi` (Hindi, non-standard grouping sizes like 3,2,2)<br>`ru` (Russian, complex plural rules)<br>`da` (Danish, different decimal/grouping separators) | All other modern CLDR locales (e.g., `zh`, `ja`, `de`, `es`, `fi`, etc.) | `en` |
-| `value` | `0`, `-0`<br>`1`, `-1`<br>`1.23`, `-1.23`<br>`1000`, `100000`<br>`1000000000`<br>`NaN`, `Infinity`, `-Infinity`<br>Edge cases: `0.0001`, `999.999` (forcing rounding transitions) | Comprehensive scale of numbers: exponents, very long decimals, specific values triggering all plural categories (zero, one, two, few, many, other) per locale. | *Mandatory* (No default) |
-| `numbering_system` | `latn` (Latin digits)<br>`arab` (Arabic-Indic digits)<br>`deva` (Devanagari digits) | All other CLDR numbering systems (e.g., `hans`, `beng`, `thai`) | Determined by `locale` |
-| `compact_style` | `none` (Standard decimal)<br>`short` (e.g., 1.2M)<br>`long` (e.g., 1.2 million) | *None* (Dimension is small) | `none` |
-| `sign_display` | `auto` (Minus sign for negative only)<br>`always` (Always show sign except NaN)<br>`never` (Never show sign)<br>`exceptZero` (Show sign for positive and negative, not zero) | *None* (Dimension is small) | `auto` |
-| `grouping_strategy` | `auto` (Standard CLDR grouping)<br>`always` (Force grouping even for small numbers)<br>`never` (No grouping separators)<br>`min2` (Group only if there are at least 2 digits before the separator) | *None* (Dimension is small) | `auto` |
-| `rounding_mode` | `halfEven` (IEEE 754 Round half to even)<br>`halfUp` (Round half away from zero)<br>`down` (Round towards zero) | Other rounding modes: `up`, `ceiling`, `floor`, `halfDown` | `halfEven` |
-| `precision` | Standard fraction limits (e.g., Min: 0, Max: 3)<br>Significant digits limits (e.g., Min: 1, Max: 5) | Exhaustive combinations of Min/Max fraction and significant digits. | Min fraction: 0, Max fraction: 3, Significant digits: undefined. |
+| Dimension Column | Core Set | Extended Set | Default Value / Behavior if Empty | TR35 Spec Reference (Link & Snippet) |
+| :--- | :--- | :--- | :--- | :--- |
+| `locale` | `en` (Standard Latin, default plurals)<br>`fr` (French, spaces as grouping separators)<br>`ar` (Arabic, Eastern Arabic digits, right-to-left)<br>`hi` (Hindi, non-standard grouping sizes like 3,2,2)<br>`ru` (Russian, complex plural rules)<br>`da` (Danish, different decimal/grouping separators) | All other modern CLDR locales (e.g., `zh`, `ja`, `de`, `es`, `fi`, etc.) | `en` | [UTS #35 Locale](https://www.unicode.org/reports/tr35/#Locale) <br> *"A locale identifier is a structured string that identifies a particular set of language, script, region, and variant preferences."* |
+| `value` | `0`, `-0`<br>`1`, `-1`<br>`1.23`, `-1.23`<br>`1000`, `100000`<br>`1000000000`<br>`NaN`, `Infinity`, `-Infinity`<br>Edge cases: `0.0001`, `999.999` (forcing rounding transitions) | Comprehensive scale of numbers: exponents, very long decimals, specific values triggering all plural categories (zero, one, two, few, many, other) per locale. | *Mandatory* (No default) | [TR35 Number Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br> *"The pattern defines the layout of the formatted number, including grouping, decimals, and sign."* |
+| `numbering_system` | `latn` (Latin digits)<br>`arab` (Arabic-Indic digits)<br>`deva` (Devanagari digits) | All other CLDR numbering systems (e.g., `hans`, `beng`, `thai`) | Determined by `locale` | [TR35 Numbering Systems](https://www.unicode.org/reports/tr35/tr35-numbers.html#Numbering_Systems) <br> *"Numbering systems define the set of digits used to represent numbers, such as 'latn' (0-9) or 'arab' (Eastern Arabic digits)."* |
+| `compact_style` | `none` (Standard decimal)<br>`short` (e.g., 1.2M)<br>`long` (e.g., 1.2 million) | *None* (Dimension is small) | `none` | [TR35 Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Number_Formats) <br> *"Compact number formats are designed for short, user-friendly representations of large numbers, e.g., '1.2M' or '1.2 million'."* |
+| `sign_display` | `auto` (Minus sign for negative only)<br>`always` (Always show sign except NaN)<br>`never` (Never show sign)<br>`exceptZero` (Show sign for positive and negative, not zero) | *None* (Dimension is small) | `auto` | [TR35 Number Patterns](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br> *"A pattern can contain a positive and a negative subpattern, e.g., '#,##0.00;(#,##0.00)'. Sign display options override how these subpatterns are applied."* |
+| `grouping_strategy` | `auto` (Standard CLDR grouping)<br>`always` (Force grouping even for small numbers)<br>`never` (No grouping separators)<br>`min2` (Group only if there are at least 2 digits before the separator) | *None* (Dimension is small) | `auto` | [TR35 Grouping Sizes](https://www.unicode.org/reports/tr35/tr35-numbers.html#Grouping_Sizes) <br> *"Grouping sizes define the number of digits between grouping separators. Some locales use primary and secondary grouping (e.g., Hindi 3,2,2)."* |
+| `rounding_mode` | `halfEven` (IEEE 754 Round half to even)<br>`halfUp` (Round half away from zero)<br>`down` (Round towards zero) | Other rounding modes: `up`, `ceiling`, `floor`, `halfDown` | `halfEven` | [TR35 Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Round_Rounding_Increment) <br> *"Rounding increment and mode define how numbers are rounded to the nearest increment, e.g., rounding half to even."* |
+| `precision` | Standard fraction limits (e.g., Min: 0, Max: 3)<br>Significant digits limits (e.g., Min: 1, Max: 5) | Exhaustive combinations of Min/Max fraction and significant digits. | Min fraction: 0, Max fraction: 3, Significant digits: undefined. | [TR35 Significant Digits](https://www.unicode.org/reports/tr35/tr35-numbers.html#Significant_Digits) <br> *"Controls the number of fraction digits or significant digits displayed, checking minimum and maximum bounds."* |
 
 ### 3.1. Java API Representation
 
@@ -261,13 +261,110 @@ public final class DecimalDimensions {
 
 Currency formatting inherits many dimensions from Decimal formatting (such as `locale`, `value`, `numbering_system`, `sign_display`, and `rounding_mode`), but introduces currency-specific dimensions that alter layout, symbols, and rounding rules.
 
-| Dimension Column | Core Set | Extended Set | Default Value / Behavior if Empty |
-| :--- | :--- | :--- | :--- |
-| `currency_code` | `USD` (Standard 2-decimal)<br>`EUR` (Standard 2-decimal, space/suffix in some locales)<br>`JPY` (0-decimal currency)<br>`IQD` (3-decimal currency)<br>`CHF` (Cash rounding to nearest 0.05)<br>`CVE` (Escudo, symbol acts as decimal separator: 100$00) | All other ISO 4217 currency codes | *Mandatory* (No default) |
-| `currency_style` | `standard` (e.g., $1,000.00)<br>`accounting` (e.g., ($1,000.00) for negative)<br>`name` (e.g., 1,000.00 US dollars) | *None* (Dimension is small) | `standard` |
-| `currency_width`| `symbol` (Standard symbol: $)<br>`narrow` (Narrow symbol if exists: $)<br>`code` (ISO code: USD) | *None* (Dimension is small) | `symbol` |
-| `cash_rounding` | `false` (Standard mathematical rounding)<br>`true` (Apply currency-specific cash rounding, e.g., Swiss 5-cent rounding) | *None* | `false` |
-| `plural_context` | `other` (default context)<br>`one` (singular context, e.g., "1.00 US dollar")<br>`many` (e.g., "1.00 US dollars" - locale dependent) | *None* (Controlled primarily by the input `value` and `locale` combination) | `other` |
+| Dimension Column | Core Set | Extended Set | Default Value / Behavior if Empty | TR35 Spec Reference (Link & Snippet) |
+| :--- | :--- | :--- | :--- | :--- |
+| `currency_code` | `USD` (Standard 2-decimal)<br>`EUR` (Standard 2-decimal, space/suffix in some locales)<br>`JPY` (0-decimal currency)<br>`IQD` (3-decimal currency)<br>`CHF` (Cash rounding to nearest 0.05)<br>`CVE` (Escudo, symbol acts as decimal separator: 100$00) | All other ISO 4217 currency codes | *Mandatory* (No default) | [TR35 Currencies](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br> *"Currencies are defined by ISO 4217 codes. Localized data provides the symbols, names, and decimal/rounding overrides for each code."* |
+| `currency_style` | `standard` (e.g., $1,000.00)<br>`accounting` (e.g., ($1,000.00) for negative)<br>`name` (e.g., 1,000.00 US dollars) | *None* (Dimension is small) | `standard` | [TR35 Currency Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Formats) <br> *"Specifies standard versus accounting styles (e.g., using parentheses for negative values in accounting: ($1.00))."* |
+| `currency_width`| `symbol` (Standard symbol: $)<br>`narrow` (Narrow symbol if exists: $)<br>`code` (ISO code: USD) | *None* (Dimension is small) | `symbol` | [TR35 Currencies](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br> *"Determines if the display uses the standard symbol ($), the narrow symbol (if available), or the ISO code (USD)."* |
+| `cash_rounding` | `false` (Standard mathematical rounding)<br>`true` (Apply currency-specific cash rounding, e.g., Swiss 5-cent rounding) | *None* | `false` | [TR35 Cash Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Cash_Rounding) <br> *"In some countries, cash transactions are rounded to a specific increment (e.g., 5 cents in Canada/Switzerland) while electronic transactions are not."* |
+| `plural_context` | `other` (default context)<br>`one` (singular context, e.g., "1.00 US dollar")<br>`many` (e.g., "1.00 US dollars" - locale dependent) | *None* (Controlled primarily by the input `value` and `locale` combination) | `other` | [TR35 Language Plural Rules](https://www.unicode.org/reports/tr35/tr35-numbers.html#Language_Plural_Rules) <br> *"When formatting with currency names, the name must agree in plural form with the formatted number according to the locale's plural rules (e.g., '1 US dollar' vs '2 US dollars')."* |
+
+### 4.1. Java API Representation
+
+To keep the implementation aligned, the following Java code skeleton defines the `CurrencyDimensions` class, including the core sets as copy-pasteable constants:
+
+```java
+package com.google.i18n.conformance.currency;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+/**
+ * Java definition of dimensions for currency formatting conformance testing.
+ * This representation makes it easy to review the input space and defaults
+ * with engineering leads.
+ */
+public final class CurrencyDimensions {
+
+  // Prevent instantiation
+  private CurrencyDimensions() {}
+
+  // ==========================================================================
+  // CORE SETS (Copy-pasteable datasets for the test runner)
+  // ==========================================================================
+
+  public static final List<String> CORE_CURRENCY_CODES = List.of(
+      "USD", // Standard 2-decimal currency
+      "EUR", // Standard 2-decimal, space/suffix differences in some locales
+      "JPY", // 0-decimal currency
+      "IQD", // 3-decimal currency
+      "CHF", // Cash rounding to nearest 0.05
+      "CVE"  // Escudo (symbol acts as decimal separator: 100$00)
+  );
+
+  public static final List<CurrencyStyle> CORE_CURRENCY_STYLES = List.of(
+      CurrencyStyle.values()
+  );
+
+  public static final List<CurrencyWidth> CORE_CURRENCY_WIDTHS = List.of(
+      CurrencyWidth.values()
+  );
+
+  public static final List<Boolean> CORE_CASH_ROUNDING_OPTIONS = List.of(
+      Boolean.TRUE,
+      Boolean.FALSE
+  );
+
+  public static final List<PluralContext> CORE_PLURAL_CONTEXTS = List.of(
+      PluralContext.values()
+  );
+
+  // ==========================================================================
+  // ENUMS
+  // ==========================================================================
+
+  public enum CurrencyStyle { STANDARD, ACCOUNTING, NAME }
+
+  public enum CurrencyWidth { SYMBOL, NARROW, CODE }
+
+  public enum PluralContext { OTHER, ONE, MANY }
+
+  // ==========================================================================
+  // DIMENSION DEFINITIONS (Using the constants above)
+  // ==========================================================================
+
+  /** 1. Currency Code Dimension */
+  public static final Dimension<String> CURRENCY_CODE = Dimension.<String>builder("currency_code")
+      .mandatory() // Each currency test case must specify a currency code
+      .withCoreSet(CORE_CURRENCY_CODES)
+      .withExtendedSetProvider(CurrencyRegistry::getAllIsoCurrenciesExceptCore)
+      .build();
+
+  /** 2. Currency Style Dimension */
+  public static final Dimension<CurrencyStyle> CURRENCY_STYLE = Dimension.<CurrencyStyle>builder("currency_style")
+      .withDefault(CurrencyStyle.STANDARD)
+      .withCoreSet(CORE_CURRENCY_STYLES)
+      .build();
+
+  /** 3. Currency Width Dimension */
+  public static final Dimension<CurrencyWidth> CURRENCY_WIDTH = Dimension.<CurrencyWidth>builder("currency_width")
+      .withDefault(CurrencyWidth.SYMBOL)
+      .withCoreSet(CORE_CURRENCY_WIDTHS)
+      .build();
+
+  /** 4. Cash Rounding Dimension */
+  public static final Dimension<Boolean> CASH_ROUNDING = Dimension.<Boolean>builder("cash_rounding")
+      .withDefault(false)
+      .withCoreSet(CORE_CASH_ROUNDING_OPTIONS)
+      .build();
+
+  /** 5. Plural Context Dimension */
+  public static final Dimension<PluralContext> PLURAL_CONTEXT = Dimension.<PluralContext>builder("plural_context")
+      .withDefault(PluralContext.OTHER)
+      .withCoreSet(CORE_PLURAL_CONTEXTS)
+      .build();
+}
+```
 
 ---
 
