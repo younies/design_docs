@@ -97,7 +97,165 @@ This section details the proposed dimensions for decimal formatting, indicating 
 | `rounding_mode` | `halfEven` (IEEE 754 Round half to even)<br>`halfUp` (Round half away from zero)<br>`down` (Round towards zero) | Other rounding modes: `up`, `ceiling`, `floor`, `halfDown` | `halfEven` |
 | `precision` | Standard fraction limits (e.g., Min: 0, Max: 3)<br>Significant digits limits (e.g., Min: 1, Max: 5) | Exhaustive combinations of Min/Max fraction and significant digits. | Min fraction: 0, Max fraction: 3, Significant digits: undefined. |
 
+### 3.1. Java API Representation
+
+To make the dimensions concrete and easily reviewable by engineering leads, the following Java code skeleton outlines how the `Dimension` classes, enums, and their core/extended configurations are defined:
+
+```java
+package com.google.i18n.conformance.decimal;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Java definition of dimensions for decimal formatting conformance testing.
+ * This representation makes it easy to review the input space and defaults
+ * with engineering leads.
+ */
+public final class DecimalDimensions {
+
+  // Prevent instantiation
+  private DecimalDimensions() {}
+
+  // ==========================================================================
+  // CORE SETS (Copy-pasteable datasets for the test runner)
+  // ==========================================================================
+
+  public static final List<String> CORE_LOCALES = List.of(
+      "en", // Standard Latin, default plurals
+      "fr", // French, spaces as grouping separators
+      "ar", // Arabic, Eastern Arabic digits, right-to-left
+      "hi", // Hindi, non-standard grouping sizes like 3,2,2
+      "ru", // Russian, complex plural rules
+      "da"  // Danish, different decimal/grouping separators
+  );
+
+  public static final List<BigDecimal> CORE_VALUES = List.of(
+      BigDecimal.ZERO,
+      new BigDecimal("-0"), // Negative zero handling
+      BigDecimal.ONE,
+      new BigDecimal("-1"),
+      new BigDecimal("1.23"),
+      new BigDecimal("-1.23"),
+      new BigDecimal("1000"),
+      new BigDecimal("100000"),
+      new BigDecimal("1000000000"),
+      new BigDecimal("0.0001"), // Edge case forcing rounding transitions
+      new BigDecimal("999.999")  // Edge case forcing rounding transitions
+  );
+
+  public static final List<String> CORE_NUMBERING_SYSTEMS = List.of(
+      "latn", // Latin digits
+      "arab", // Arabic-Indic digits
+      "deva"  // Devanagari digits
+  );
+
+  public static final List<CompactStyle> CORE_COMPACT_STYLES = List.of(
+      CompactStyle.values()
+  );
+
+  public static final List<SignDisplay> CORE_SIGN_DISPLAYS = List.of(
+      SignDisplay.values()
+  );
+
+  public static final List<GroupingStrategy> CORE_GROUPING_STRATEGIES = List.of(
+      GroupingStrategy.values()
+  );
+
+  public static final List<RoundingMode> CORE_ROUNDING_MODES = List.of(
+      RoundingMode.HALF_EVEN, // IEEE 754 Round half to even (default)
+      RoundingMode.HALF_UP,   // Round half away from zero
+      RoundingMode.DOWN       // Round towards zero (truncation)
+  );
+
+  public static final List<PrecisionConfig> CORE_PRECISIONS = List.of(
+      PrecisionConfig.create(0, 3),            // Standard default (0-3 fraction digits)
+      PrecisionConfig.create(0, 0),            // Integer only
+      PrecisionConfig.create(2, 2),            // Fixed 2 decimal places
+      PrecisionConfig.createSignificant(1, 5)  // Significant digits range (1-5)
+  );
+
+  // ==========================================================================
+  // ENUMS & CONFIG CLASSES
+  // ==========================================================================
+
+  public enum CompactStyle { NONE, SHORT, LONG }
+  
+  public enum SignDisplay { AUTO, ALWAYS, NEVER, EXCEPT_ZERO }
+  
+  public enum GroupingStrategy { AUTO, ALWAYS, NEVER, MIN2 }
+  
+  public enum RoundingMode { HALF_EVEN, HALF_UP, DOWN, UP, CEILING, FLOOR, HALF_DOWN }
+
+  public static class PrecisionConfig {
+    public static PrecisionConfig create(int minFraction, int maxFraction) { ... }
+    public static PrecisionConfig createSignificant(int minSig, int maxSig) { ... }
+  }
+
+  // ==========================================================================
+  // DIMENSION DEFINITIONS (Using the constants above)
+  // ==========================================================================
+
+  /** 1. Locale Dimension */
+  public static final Dimension<String> LOCALE = Dimension.<String>builder("locale")
+      .withDefault("en")
+      .withCoreSet(CORE_LOCALES)
+      .withExtendedSetProvider(() -> LocaleRegistry.getModernLocalesExcept(CORE_LOCALES))
+      .build();
+
+  /** 2. Value Dimension */
+  public static final Dimension<BigDecimal> VALUE = Dimension.<BigDecimal>builder("value")
+      .mandatory()
+      .withCoreSet(CORE_VALUES)
+      .withExtendedSetProvider(ValueGenerator::getExhaustivePluralTriggerValues)
+      .build();
+
+  /** 3. Numbering System Dimension */
+  public static final Dimension<String> NUMBERING_SYSTEM = Dimension.<String>builder("numbering_system")
+      .withDynamicDefault(context -> context.get(LOCALE)
+          .flatMap(LocaleRegistry::getDefaultNumberingSystem)
+          .orElse("latn"))
+      .withCoreSet(CORE_NUMBERING_SYSTEMS)
+      .withExtendedSetProvider(() -> LocaleRegistry.getAllNumberingSystemsExcept(CORE_NUMBERING_SYSTEMS))
+      .build();
+
+  /** 4. Compact Style Dimension */
+  public static final Dimension<CompactStyle> COMPACT_STYLE = Dimension.<CompactStyle>builder("compact_style")
+      .withDefault(CompactStyle.NONE)
+      .withCoreSet(CORE_COMPACT_STYLES)
+      .build();
+
+  /** 5. Sign Display Dimension */
+  public static final Dimension<SignDisplay> SIGN_DISPLAY = Dimension.<SignDisplay>builder("sign_display")
+      .withDefault(SignDisplay.AUTO)
+      .withCoreSet(CORE_SIGN_DISPLAYS)
+      .build();
+
+  /** 6. Grouping Strategy Dimension */
+  public static final Dimension<GroupingStrategy> GROUPING_STRATEGY = Dimension.<GroupingStrategy>builder("grouping_strategy")
+      .withDefault(GroupingStrategy.AUTO)
+      .withCoreSet(CORE_GROUPING_STRATEGIES)
+      .build();
+
+  /** 7. Rounding Mode Dimension */
+  public static final Dimension<RoundingMode> ROUNDING_MODE = Dimension.<RoundingMode>builder("rounding_mode")
+      .withDefault(RoundingMode.HALF_EVEN)
+      .withCoreSet(CORE_ROUNDING_MODES)
+      .withExtendedSet(List.of(RoundingMode.UP, RoundingMode.CEILING, RoundingMode.FLOOR, RoundingMode.HALF_DOWN))
+      .build();
+
+  /** 8. Precision Dimension */
+  public static final Dimension<PrecisionConfig> PRECISION = Dimension.<PrecisionConfig>builder("precision")
+      .withDefault(PrecisionConfig.create(0, 3))
+      .withCoreSet(CORE_PRECISIONS)
+      .withExtendedSetProvider(PrecisionConfig::generateExhaustiveCombinations)
+      .build();
+}
+```
+
 ---
+
 
 ## 4. Currency Formatting Dimensions
 
