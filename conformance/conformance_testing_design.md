@@ -27,9 +27,10 @@ The test generation framework is built around two primary abstractions: the **Di
 ```mermaid
 graph TD
     subgraph Input Space
-        D1[Dimension 1: Locale]
-        D2[Dimension 2: Numbers]
-        D3[Dimension 3: Style]
+        D1[Dimension: Locale]
+        D2[Dimension: Number Format]
+        D3[Dimension: Format Length]
+        D4[Dimension: Input Value]
     end
     
     InputSpace[Dimensions: Core + Extended Sets] --> Combinator
@@ -40,361 +41,341 @@ graph TD
     
     Combinator -->|Cartesian Product / Filtering| TSVOut[TSV Output Files]
     
-    subgraph Output Files
-        TSVOut --> CoreTSV[decimals.tsv <br> 90% coverage, Core Dimensions]
-        TSVOut --> ExtTSV1[decimals_modern_locales_long.tsv <br> Extended Locale + Core, Split < 10k lines]
-        TSVOut --> ExtTSV2[decimals_modern_locales_short.tsv <br> Extended Locale + Core, Split < 10k lines]
+    subgraph Output Files (Decimal)
+        TSVOut --> CoreTSV[decimals.tsv <br> Core Locales x Core Styles x Core Numbers]
+        TSVOut --> ExtLocTSV[decimals_modern_locales.tsv <br> Extended Locales x Core Styles x Core Numbers]
+        TSVOut --> ExtNumTSV[decimals_extended_numbers.tsv <br> Core Locales x Core Styles x Extended Numbers]
     end
 ```
 
 ### 2.1. The `Dimension` Class
 
-A `Dimension` represents a single input variable or configuration option that influences the output of decimal or currency formatting. Examples include the input number, the locale, the sign display rule, or the compact width.
+A `Dimension` represents a single input variable or configuration option that influences the output of decimal or currency formatting. Examples include the input number, the locale, or the format length.
 
 #### Key Features of `Dimension`:
 * **Core vs. Extended Sets:** To prevent combinatorial explosion while maintaining high coverage, each dimension categorizes its values into:
     * **Core Set:** A minimal, highly representative subset of values. This set contains all critical edge cases, common variations, and complex rules. If a dimension is small enough, its Core Set represents the entire dimension.
-    * **Extended Set(s):** The remaining possible values (e.g., all 500+ modern locales, rare currencies, or exhaustive rounding combinations).
+    * **Extended Set(s):** The remaining possible values (e.g., all 500+ modern locales, rare currencies, or exhaustive numeric scales).
 * **Nullability & Defaults:** Each dimension explicitly declares:
     * Whether it can be **empty** (null/omitted).
     * The **default value** applied by the formatting engine when it is empty.
 * **TSV Representation:** Each dimension maps directly to a column in the output TSV file. If a dimension value for a test case is empty (i.e., it should test the default behavior), it is serialized as an **empty cell** in the TSV.
 
-### 2.2. The `Combinator` Class
+### 2.2. The `Combinator` and Output TSV Files
 
-The `Combinator` is responsible for taking all defined dimensions and orchestrating their combination to produce a final set of test cases.
+The `Combinator` is responsible for taking all defined dimensions and orchestrating their combination to produce the final test suites, saving them as Tab-Separated Values (TSV) files.
 
-#### Combination Strategy:
-1. **Core Test Suite:** 
-   The Combinator generates a Cartesian product of the **Core Sets** of all dimensions. This compact suite is designed to cover approximately **90% of all distinct logic paths and edge cases** with a relatively small number of test cases.
-2. **Extended Test Suites:**
-   To test the remaining long tail of values without multiplying the entire space, the Combinator pairs **one extended dimension set at a time** with the **core sets of all other dimensions**.
-   * *Example:* To test all modern locales, it combines the *Extended Locales* set with the *Core Numbers*, *Core Styles*, and *Core Rounding* options.
-   * *De-duplication:* The extended sets must strictly exclude values already present in the core sets to prevent redundant test cases.
-
-### 2.3. Output TSV Files & Splitting Strategy
-
-The output of the generator consists of Tab-Separated Values (TSV) files. 
-
-* **Columns:** The columns represent the dimensions in a fixed, documented order, followed by the expected formatted output (and potentially auxiliary validation fields).
-* **Empty Cells:** A blank cell explicitly denotes that the dimension was omitted, signaling the implementation under test to fall back to its default behavior.
-* **File Splitting Rules:**
-    1. **Core File:** Saved as `decimals.tsv` or `currencies.tsv`. This contains the core-to-core combinations.
-    2. **Extended Files:** Named systematically (e.g., `decimals_modern_locale.tsv`).
-    3. **Line Limit (Max 10k lines):** To keep files manageable for version control, code review, and memory consumption in test runners, no single TSV file should exceed **10,000 lines**.
-    4. **Splitting Dimension:** If an extended test suite exceeds 10,000 lines, the Combinator splits it across another logical dimension. For example, modern locales might be split by compact format length:
-        * `decimals_modern_locale_short.tsv`
-        * `decimals_modern_locale_long.tsv`
+#### Combination & Splitting Strategy:
+1. **Core Test Suite (`decimals.tsv` / `currencies.tsv`):** 
+   Generates a Cartesian product of the **Core Sets** of all dimensions. This compact suite is designed to cover approximately **90% of all distinct logic paths and edge cases** (e.g., standard styles across high-signal locales and representative numbers) with a minimal footprint.
+2. **Extended Locales Suite (`decimals_modern_locales.tsv` / `currencies_*_modern_locales.tsv`):**
+   Pairs the **Extended Modern Locales** set with the **Core Sets** of all other dimensions to verify language-specific rules across the long tail.
+3. **Extended Numbers Suite (`decimals_extended_numbers.tsv` / `currencies_*_extended_numbers.tsv`):**
+   Pairs the **Extended Numbers** set (exhaustive powers of 10, rounding edge cases) with the **Core Locales** and Core styles to verify mathematical precision and scale transitions.
+4. **Extended Currencies Suite (Currency only - `currencies_*_modern_currencies.tsv`):**
+   Pairs the **Extended Modern Currencies** set with the Core Locales and Core styles to verify rare currency symbol rendering, ISO codes, and custom decimal rules.
+5. **Deduplication:** Extended sets strictly exclude values already present in the core sets to prevent redundant test cases.
+6. **File Size Management:** To keep files manageable for version control and test runners, the currency extended suites are split by formatting style and representation (e.g., splitting into `currencies_symbol_accounting_modern_currencies.tsv`, etc.) ensuring no single file exceeds comfortable reading limits (max 10,000 lines).
 
 ---
 
 ## 3. Decimal Formatting Dimensions
 
-This section details the proposed dimensions for decimal formatting, indicating which values constitute the Core and Extended sets, and specifying default behaviors.
+This section details the dimensions implemented in the decimal formatting test generator, indicating which values constitute the Core and Extended sets, and specifying default behaviors.
 
 | Dimension Column | Explanation | TR35 Spec Reference (Link & Snippet) | Core Set | Extended Set | Default Value / Behavior if Empty |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `locale` <br> **Java Name:** `Locale` | The locale identifier determines the linguistic and regional formatting rules (e.g., decimal separator, grouping separator, digit symbols). | [UTS #35 Locale](https://www.unicode.org/reports/tr35/#Locale) <br> *"A locale identifier is a structured string that identifies a particular set of language, script, region, and variant preferences."* | `en` (Standard Latin, default plurals)<br>`fr` (French, spaces as grouping separators)<br>`ar` (Arabic, Eastern Arabic digits, right-to-left)<br>`hi` (Hindi, non-standard grouping sizes like 3,2,2)<br>`ru` (Russian, complex plural rules)<br>`da` (Danish, different decimal/grouping separators) | All other modern CLDR locales (e.g., `zh`, `ja`, `de`, `es`, `fi`, etc.) | `en` |
-| `value` <br> **Java Name:** `Value` | The input numeric value (a finite number, negative zero, NaN, or Infinity) to be formatted. | [TR35 Number Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br> *"The pattern defines the layout of the formatted number, including grouping, decimals, and sign."* | `empty` (Omitted/null value)<br>`0`, `-0`<br>`1`, `-1`<br>`1.23`, `-1.23`<br>`1000`, `100000`<br>`1000000000`<br>`NaN`, `Infinity`, `-Infinity`<br>Edge cases: `0.0001`, `999.999` (forcing rounding transitions) | Comprehensive scale of numbers: exponents, very long decimals, specific values triggering all plural categories (zero, one, two, few, many, other) per locale. | `empty` (Omitted value defaults to empty/blank output) |
-| `numbering_system` <br> **Java Name:** `NumberingSystem` | Specifies the set of digit characters and rules used to render the numbers (e.g., standard Latin vs. Eastern Arabic-Indic digits). | [TR35 Numbering Systems](https://www.unicode.org/reports/tr35/tr35-numbers.html#Numbering_Systems) <br> *"Numbering systems define the set of digits used to represent numbers, such as 'latn' (0-9) or 'arab' (Eastern Arabic digits)."* | `latn` (Latin digits)<br>`arab` (Arabic-Indic digits)<br>`deva` (Devanagari digits) | All other CLDR numbering systems (e.g., `hans`, `beng`, `thai`) | Determined by `locale` |
-| `decimal_format_length` <br> **Java Name:** `DecimalFormatLength` | Specifies the format length style, allowing compact representations of numbers. | [TR35 Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Number_Formats) <br> *"Compact number formats are designed for short, user-friendly representations of large numbers, e.g., '10K' or '10 thousand'."* | `compact_short` (e.g., 1.2K)<br>`compact_long` (e.g., 1.2 thousand) | *None* (Dimension is small) | `empty` (Falls back to standard decimal formatting) |
-| `sign_display` <br> **Java Name:** `SignDisplay` | Controls when and how the positive or negative signs are displayed (e.g., always show sign, or only for negative numbers). | [TR35 Number Patterns](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br> *"A pattern can contain a positive and a negative subpattern, e.g., '#,##0.00;(#,##0.00)'. Sign display options override how these subpatterns are applied."* | `auto` (Minus sign for negative only)<br>`always` (Always show sign except NaN)<br>`never` (Never show sign)<br>`exceptZero` (Show sign for positive and negative, not zero) | *None* (Dimension is small) | `auto` |
-| `rounding_mode` <br> **Java Name:** `RoundingMode` | Determines the mathematical algorithm used when rounding numbers to fit the precision limits (e.g., round half-to-even, round towards zero). | [TR35 Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Round_Rounding_Increment) <br> *"Rounding increment and mode define how numbers are rounded to the nearest increment, e.g., rounding half to even."* | `halfEven` (IEEE 754 Round half to even)<br>`halfUp` (Round half away from zero)<br>`down` (Round towards zero) | Other rounding modes: `up`, `ceiling`, `floor`, `halfDown` | `halfEven` |
-| `precision` <br> **Java Name:** `Precision` | Controls the constraints on the number of fraction digits or significant digits to be displayed (minimum and maximum limits). | [TR35 Significant Digits](https://www.unicode.org/reports/tr35/tr35-numbers.html#Significant_Digits) <br> *"Controls the number of fraction digits or significant digits displayed, checking minimum and maximum bounds."* | Standard fraction limits (e.g., Min: 0, Max: 3)<br>Significant digits limits (e.g., Min: 1, Max: 5) | Exhaustive combinations of Min/Max fraction and significant digits. | Min fraction: 0, Max fraction: 3, Significant digits: undefined. |
+| `locale` <br> **Java Name:** `Locale` | The locale identifier determines the linguistic and regional formatting rules (e.g., decimal separator, grouping separator, digit symbols). | [UTS #35 Locale](https://www.unicode.org/reports/tr35/#Locale) <br> *"A locale identifier is a structured string that identifies a particular set of language, script, region, and variant preferences."* | `ar` (Arabic RTL, Latin digits)<br>`ar_EG` (Arabic Egypt, Eastern Arabic digits)<br>`bn` (Bengali LTR, Bengali digits, Indian grouping)<br>`de` (German, comma/dot separators)<br>`de_CH` (German Swiss, apostrophe separator)<br>`en` (English LTR, dot/comma separators)<br>`ja` (Japanese, 4-digit grouping)<br>`pt_PT` (Portuguese, space separator)<br>`ru` (Russian, Cyrillic script, complex plurals) | All other modern CLDR locales | `en` |
+| `number_format` <br> **Java Name:** `NumberFormat` | Specifies the core format pattern type to apply: standard decimal, percent representation, or scientific notation. | [TR35 Number Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Formats) <br> *"Number formats include standard decimal patterns, percent patterns, and scientific notation patterns."* | `decimal` (Standard decimal)<br>`percent` (Percentage, scaled $\times 100$)<br>`scientific` (Scientific/exponential notation) | *None* (Dimension is fully covered) | `decimal` |
+| `format_length` <br> **Java Name:** `FormatLength` | Specifies the format length style, allowing compact representations of numbers (e.g. 1.2K or 1.2 million). | [TR35 Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Number_Formats) <br> *"Compact number formats are designed for short, user-friendly representations of large numbers, e.g., '10K' or '10 thousand'."* | `empty` (Standard formatting, represented as `""`) <br>`short` (Compact short, e.g. 1.2K)<br>`long` (Compact long, e.g. 1.2 thousand) | *None* (Dimension is fully covered) | `empty` (Standard decimal formatting) |
+| `input` <br> **Java Name:** `Input` | The input numeric value (represented as a standard double) to be formatted. | [TR35 Number Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br> *"The pattern defines the layout of the formatted number, including grouping, decimals, and sign."* | `0.0`, `1.2`, `0.00831765`<br>`1234565.0`, `-1230.05` | Comprehensive mathematical scale:<br>- Powers of 10 ($10^{-6}$ to $10^{12}$)<br>- Multiples ($1.5 \times 10^i$, $5 \times 10^i$)<br>- Edge cases: `12.0`, `123.0`, `1234.56`, `1234567.0`, `0.000123`, `-0.0`, `0.5`, `1.5`, `2.5`, `3.5`, `0.125`, `0.135`, `999.9`, `999999.9`<br>- Negatives of all the above. | *Mandatory* (No default) |
 
 ### 3.1. Java API Representation
 
-To make the dimensions concrete and easily reviewable by engineering leads, the following Java code skeleton outlines how the `Dimension` classes, enums, and their core/extended configurations are defined:
+To keep the specification and implementation in perfect alignment, the following Java code snippet reflects the exact `Dimensions` structure and datasets implemented in `GenerateDecimalFormatTestData.java`:
 
 ```java
-package com.google.i18n.conformance.decimal;
+package org.unicode.cldr.tool;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Optional;
+import com.google.common.collect.ImmutableSet;
+import java.util.EnumSet;
+import java.util.Set;
+import java.util.TreeSet;
+import org.unicode.cldr.util.CLDRConfig;
+import org.unicode.cldr.util.Factory;
+import org.unicode.cldr.util.Level;
+import org.unicode.cldr.util.Organization;
+import org.unicode.cldr.util.StandardCodes;
 
-/**
- * Java definition of dimensions for decimal formatting conformance testing.
- * This representation makes it easy to review the input space and defaults
- * with engineering leads.
- */
-public final class DecimalDimensions {
+public final class GenerateDecimalFormatTestData {
 
-  // Prevent instantiation
-  private DecimalDimensions() {}
+    public static final class Dimensions {
+        private static final CLDRConfig CLDR_CONFIG = CLDRConfig.getInstance();
+        private static final Factory CLDR_FACTORY = CLDR_CONFIG.getCldrFactory();
 
-  // ==========================================================================
-  // CORE SETS (Copy-pasteable datasets for the test runner)
-  // ==========================================================================
+        // Core subset of locales for quick, high-signal testing
+        private static final ImmutableSet<String> CORE_LOCALES =
+                ImmutableSet.of("ar", "ar_EG", "bn", "de", "de_CH", "en", "ja", "pt_PT", "ru");
 
-  public static final List<String> CORE_LOCALES = List.of(
-      "en", // Standard Latin, default plurals
-      "fr", // French, spaces as grouping separators
-      "ar", // Arabic, Eastern Arabic digits, right-to-left
-      "hi", // Hindi, non-standard grouping sizes like 3,2,2
-      "ru", // Russian, complex plural rules
-      "da"  // Danish, different decimal/grouping separators
-  );
+        // Core subset of test numbers
+        public static final ImmutableSet<Double> CORE_NUMBERS =
+                ImmutableSet.of(0.0, 1.2, 0.00831765, 1234565.0, -1230.05);
 
-  public static final List<Number> CORE_VALUES = java.util.Arrays.asList(
-      null, // Omitted/empty value (tests default behavior)
-      BigDecimal.ZERO,
-      new BigDecimal("-0"), // Negative zero handling
-      BigDecimal.ONE,
-      new BigDecimal("-1"),
-      new BigDecimal("1.23"),
-      new BigDecimal("-1.23"),
-      new BigDecimal("1000"),
-      new BigDecimal("100000"),
-      new BigDecimal("1000000000"),
-      Double.NaN,
-      Double.POSITIVE_INFINITY,
-      Double.NEGATIVE_INFINITY,
-      new BigDecimal("0.0001"), // Edge case forcing rounding transitions
-      new BigDecimal("999.999")  // Edge case forcing rounding transitions
-  );
+        // Core number format type dimension
+        public enum NumberFormat {
+            DECIMAL("decimal"),
+            PERCENT("percent"),
+            SCIENTIFIC("scientific");
 
-  public static final List<String> CORE_NUMBERING_SYSTEMS = List.of(
-      "latn", // Latin digits
-      "arab", // Arabic-Indic digits
-      "deva"  // Devanagari digits
-  );
+            private final String label;
+            NumberFormat(String label) { this.label = label; }
+            public String getLabel() { return label; }
+        }
 
-  public static final List<DecimalFormatLength> CORE_DECIMAL_FORMAT_LENGTHS = List.of(
-      DecimalFormatLength.values()
-  );
+        // Format length dimension (empty, short, long)
+        public enum FormatLength {
+            EMPTY(""),
+            SHORT("short"),
+            LONG("long");
 
-  public static final List<SignDisplay> CORE_SIGN_DISPLAYS = List.of(
-      SignDisplay.values()
-  );
+            private final String label;
+            FormatLength(String label) { this.label = label; }
+            public String getLabel() { return label; }
+        }
 
-  public static final List<RoundingMode> CORE_ROUNDING_MODES = List.of(
-      RoundingMode.HALF_EVEN, // IEEE 754 Round half to even (default)
-      RoundingMode.HALF_UP,   // Round half away from zero
-      RoundingMode.DOWN       // Round towards zero (truncation)
-  );
+        public static ImmutableSet<String> getCoreLocales() {
+            return CORE_LOCALES;
+        }
 
-  public static final List<PrecisionConfig> CORE_PRECISIONS = List.of(
-      PrecisionConfig.create(0, 3),            // Standard default (0-3 fraction digits)
-      PrecisionConfig.create(0, 0),            // Integer only
-      PrecisionConfig.create(2, 2),            // Fixed 2 decimal places
-      PrecisionConfig.createSignificant(1, 5)  // Significant digits range (1-5)
-  );
+        public static Set<String> getAllLocales() {
+            return CLDR_FACTORY.getAvailableLanguages();
+        }
 
-  // ==========================================================================
-  // ENUMS & CONFIG CLASSES
-  // ==========================================================================
+        public static Set<String> getExtendedModernLocales() {
+            Set<String> modernLocales =
+                    StandardCodes.make()
+                            .getLocaleCoverageLocales(Organization.cldr, EnumSet.of(Level.MODERN));
+            Set<String> extendedModernLocales = new TreeSet<>(modernLocales);
+            extendedModernLocales.removeAll(getCoreLocales());
+            return extendedModernLocales;
+        }
 
-  public enum DecimalFormatLength { COMPACT_SHORT, COMPACT_LONG }
-  
-  public enum SignDisplay { AUTO, ALWAYS, NEVER, EXCEPT_ZERO }
-  
-  public enum RoundingMode { HALF_EVEN, HALF_UP, DOWN, UP, CEILING, FLOOR, HALF_DOWN }
+        public static Set<Double> getExtendedNumbers() {
+            Set<Double> results = new TreeSet<>();
+            // Add powers of 10 and their multiples
+            for (int i = -6; i <= 12; i++) {
+                results.add(Math.pow(10, i));
+                results.add(Math.pow(10, i) * 1.5);
+                results.add(Math.pow(10, i) * 5);
+            }
+            // Add standard edge cases
+            results.addAll(CORE_NUMBERS);
+            results.add(12.0);
+            results.add(123.0);
+            results.add(1234.56);
+            results.add(1234567.0);
+            results.add(0.000123);
+            results.add(-0.0);
+            results.add(0.5);
+            results.add(1.5);
+            results.add(2.5);
+            results.add(3.5);
+            results.add(0.125);
+            results.add(0.135);
+            results.add(999.9);
+            results.add(999999.9);
 
-  public static class PrecisionConfig {
-    public static PrecisionConfig create(int minFraction, int maxFraction) { ... }
-    public static PrecisionConfig createSignificant(int minSig, int maxSig) { ... }
-  }
+            // Add negative counterparts
+            Set<Double> negatives = new TreeSet<>();
+            for (Double d : results) {
+                if (d > 0) { negatives.add(-d); }
+            }
+            results.addAll(negatives);
+            return results;
+        }
 
-  // ==========================================================================
-  // DIMENSION DEFINITIONS (Using the constants above)
-  // ==========================================================================
-
-  /** 1. Locale Dimension */
-  public static final Dimension<String> LOCALE = Dimension.<String>builder("locale")
-      .withDefault("en")
-      .withCoreSet(CORE_LOCALES)
-      .withExtendedSetProvider(() -> LocaleRegistry.getModernLocalesExcept(CORE_LOCALES))
-      .build();
-
-  /** 2. Value Dimension */
-  public static final Dimension<Number> VALUE = Dimension.<Number>builder("value")
-      .withDefault(null) // Null represents omitted/empty value (results in empty string output)
-      .withCoreSet(CORE_VALUES)
-      .withExtendedSetProvider(ValueGenerator::getExhaustivePluralTriggerValues)
-      .build();
-
-  /** 3. Numbering System Dimension */
-  public static final Dimension<String> NUMBERING_SYSTEM = Dimension.<String>builder("numbering_system")
-      .withDynamicDefault(context -> context.get(LOCALE)
-          .flatMap(LocaleRegistry::getDefaultNumberingSystem)
-          .orElse("latn"))
-      .withCoreSet(CORE_NUMBERING_SYSTEMS)
-      .withExtendedSetProvider(() -> LocaleRegistry.getAllNumberingSystemsExcept(CORE_NUMBERING_SYSTEMS))
-      .build();
-
-  /** 4. Decimal Format Length Dimension */
-  public static final Dimension<DecimalFormatLength> DECIMAL_FORMAT_LENGTH = Dimension.<DecimalFormatLength>builder("decimal_format_length")
-      .withDefault(null) // Null/empty represents standard decimal formatting
-      .withCoreSet(CORE_DECIMAL_FORMAT_LENGTHS)
-      .build();
-
-  /** 5. Sign Display Dimension */
-  public static final Dimension<SignDisplay> SIGN_DISPLAY = Dimension.<SignDisplay>builder("sign_display")
-      .withDefault(SignDisplay.AUTO)
-      .withCoreSet(CORE_SIGN_DISPLAYS)
-      .build();
-
-  /** 6. Rounding Mode Dimension */
-  public static final Dimension<RoundingMode> ROUNDING_MODE = Dimension.<RoundingMode>builder("rounding_mode")
-      .withDefault(RoundingMode.HALF_EVEN)
-      .withCoreSet(CORE_ROUNDING_MODES)
-      .withExtendedSet(List.of(RoundingMode.UP, RoundingMode.CEILING, RoundingMode.FLOOR, RoundingMode.HALF_DOWN))
-      .build();
-
-  /** 7. Precision Dimension */
-  public static final Dimension<PrecisionConfig> PRECISION = Dimension.<PrecisionConfig>builder("precision")
-      .withDefault(PrecisionConfig.create(0, 3))
-      .withCoreSet(CORE_PRECISIONS)
-      .withExtendedSetProvider(PrecisionConfig::generateExhaustiveCombinations)
-      .build();
+        private Dimensions() {}
+    }
 }
 ```
 
 ---
-
 
 ## 4. Currency Formatting Dimensions
 
-Currency formatting inherits many dimensions from Decimal formatting (such as `locale`, `value`, `numbering_system`, `sign_display`, and `rounding_mode`), but introduces currency-specific dimensions that alter layout, symbols, and rounding rules.
+Currency formatting inherits several dimensions from Decimal formatting (such as `locale` and `input`), but introduces currency-specific dimensions that alter layout, symbols, and formatting behavior (accounting parenthesis, long names, narrow symbols).
 
 | Dimension Column | Explanation | TR35 Spec Reference (Link & Snippet) | Core Set | Extended Set | Default Value / Behavior if Empty |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `currency_code` <br> **Java Name:** `CurrencyCode` | The ISO 4217 three-letter code of the currency, which determines the currency symbol, default decimal places, and rounding rules. | [TR35 Currencies](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br> *"Currencies are defined by ISO 4217 codes. Localized data provides the symbols, names, and decimal/rounding overrides for each code."* | `USD` (Standard 2-decimal)<br>`EUR` (Standard 2-decimal, space/suffix in some locales)<br>`JPY` (0-decimal currency)<br>`IQD` (3-decimal currency)<br>`CHF` (Cash rounding to nearest 0.05)<br>`CVE` (Escudo, symbol acts as decimal separator: 100$00) | All other ISO 4217 currency codes | *Mandatory* (No default) |
-| `currency_style` <br> **Java Name:** `CurrencyStyle` | Selects between standard formatting (e.g., '$1.00') or accounting formatting (which often uses parentheses for negative values: '($1.00)'). | [TR35 Currency Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Formats) <br> *"Specifies standard versus accounting styles (e.g., using parentheses for negative values in accounting: ($1.00))."* | `standard` (e.g., $1,000.00)<br>`accounting` (e.g., ($1,000.00) for negative)<br>`name` (e.g., 1,000.00 US dollars) | *None* (Dimension is small) | `standard` |
-| `currency_width` <br> **Java Name:** `CurrencyWidth` | Determines the display width of the currency identifier (e.g., standard symbol '$', narrow symbol '$', or ISO code 'USD'). | [TR35 Currencies](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br> *"Determines if the display uses the standard symbol ($), the narrow symbol (if available), or the ISO code (USD)."* | `symbol` (Standard symbol: $)<br>`narrow` (Narrow symbol if exists: $)<br>`code` (ISO code: USD) | *None* (Dimension is small) | `symbol` |
-| `decimal_format_length` <br> **Java Name:** `DecimalFormatLength` | Specifies the format length style for compact currency representation. <br> *Note: `compact_long` is not added/supported yet.* | [TR35 Compact Currency Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Number_Formats) <br> *"Compact number formats can also be applied to currencies, e.g., '$1.2M'. Only the short style is currently supported."* | `compact_short` (e.g., $1.2M) | *None* (Dimension is small) | `empty` (Falls back to standard currency formatting) |
-| `cash_rounding` <br> **Java Name:** `CashRounding` | Specifies whether to apply currency-specific cash rounding rules, which are typically used for physical cash transactions in specific countries. | [TR35 Cash Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Cash_Rounding) <br> *"In some countries, cash transactions are rounded to a specific increment (e.g., 5 cents in Canada/Switzerland) while electronic transactions are not."* | `false` (Standard mathematical rounding)<br>`true` (Apply currency-specific cash rounding, e.g., Swiss 5-cent rounding) | *None* | `false` |
-| `plural_context` <br> **Java Name:** `PluralContext` | Determines the plural category context to ensure correct grammatical agreement when formatting with the long currency name (e.g., '1.00 US dollar' vs. '2.00 US dollars'). | [TR35 Language Plural Rules](https://www.unicode.org/reports/tr35/tr35-numbers.html#Language_Plural_Rules) <br> *"When formatting with currency names, the name must agree in plural form with the formatted number according to the locale's plural rules (e.g., '1 US dollar' vs '2 US dollars')."* | `other` (default context)<br>`one` (singular context, e.g., "1.00 US dollar")<br>`many` (e.g., "1.00 US dollars" - locale dependent) | *None* (Controlled primarily by the input `value` and `locale` combination) | `other` |
+| `locale` <br> **Java Name:** `Locale` | Same as Decimal. | Same as Decimal. | Same as Decimal. | Same as Decimal. | `en` |
+| `currency` <br> **Java Name:** `Currency` | The ISO 4217 three-letter code of the currency to format. If empty, formats as a standard decimal/accounting number without a currency unit. | [TR35 Currencies](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br> *"Currencies are defined by ISO 4217 codes. Localized data provides the symbols, names, and decimal/rounding overrides for each code."* | `USD` (Standard 2-decimal)<br>`EUR` (Standard 2-decimal, European spacing)<br>`JPY` (0-decimal currency)<br>`RUB` (Cyrillic Ruble, complex plurals)<br>`EGP` (Egyptian Pound, RTL Arabic context)<br>`empty` (Omitted, represented as `""`) | All other active legal-tender ISO 4217 currency codes | `empty` (Omitted) |
+| `currency_format_length` <br> **Java Name:** `CurrencyFormatLength` | Controls the overall formatting style and length (standard, accounting parentheses, or compact short). <br> *Note: Compact long is not supported for currency in CLDR.* | [TR35 Currency Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Formats) <br> *"Specifies standard versus accounting styles (e.g., ($1.00)) or compact short styles (e.g., $1.2K)."* | `standard` (Standard currency formatting)<br>`accounting` (Accounting style: uses parenthesis for negatives)<br>`short` (Compact short currency style: e.g. $1.2K) | *None* (Dimension is fully covered) | `standard` |
+| `currency_display` <br> **Java Name:** `CurrencyDisplay` | Controls how the currency unit itself is represented within the formatted string (symbol, narrow symbol, ISO code, or full plural name). | [TR35 Currencies](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br> *"Determines if the display uses the standard symbol ($), narrow symbol ($), ISO code (USD), or full name (US dollars)."* | `symbol` (e.g. $1.00)<br>`narrowSymbol` (e.g. narrow variant)<br>`code` (ISO code, e.g. USD 1.00)<br>`name` (Plural name, e.g. 1.00 US dollar) | *None* (Dimension is fully covered) | `symbol` |
+| `input` <br> **Java Name:** `Input` | Same as Decimal. | Same as Decimal. | Same as Decimal. | Same as Decimal. | *Mandatory* |
 
 ### 4.1. Java API Representation
 
-To keep the implementation aligned, the following Java code skeleton defines the `CurrencyDimensions` class, including the core sets as copy-pasteable constants:
+The following Java code snippet reflects the exact `Dimensions` structure and datasets implemented in `GenerateCurrencyFormatTestData.java` (reusing core sets where applicable):
 
 ```java
-package com.google.i18n.conformance.currency;
+package org.unicode.cldr.tool;
 
-import java.math.BigDecimal;
-import java.util.List;
+import com.google.common.collect.ImmutableSet;
+import java.util.Date;
+import java.util.EnumSet;
+import java.util.Set;
+import java.util.TreeSet;
+import org.unicode.cldr.util.CLDRConfig;
+import org.unicode.cldr.util.Factory;
+import org.unicode.cldr.util.Level;
+import org.unicode.cldr.util.Organization;
+import org.unicode.cldr.util.StandardCodes;
+import org.unicode.cldr.util.SupplementalDataInfo;
+import org.unicode.cldr.util.SupplementalDataInfo.CurrencyDateInfo;
 
-/**
- * Java definition of dimensions for currency formatting conformance testing.
- * This representation makes it easy to review the input space and defaults
- * with engineering leads.
- */
-public final class CurrencyDimensions {
+public final class GenerateCurrencyFormatTestData {
 
-  // Prevent instantiation
-  private CurrencyDimensions() {}
+    public static final class Dimensions {
+        private static final CLDRConfig CLDR_CONFIG = CLDRConfig.getInstance();
+        private static final Factory CLDR_FACTORY = CLDR_CONFIG.getCldrFactory();
 
-  // ==========================================================================
-  // CORE SETS (Copy-pasteable datasets for the test runner)
-  // ==========================================================================
+        // Core subset of locales (deduplicated/shared with decimal)
+        private static final ImmutableSet<String> CORE_LOCALES =
+                ImmutableSet.of("ar", "ar_EG", "bn", "de", "de_CH", "en", "ja", "pt_PT", "ru");
 
-  public static final List<String> CORE_CURRENCY_CODES = List.of(
-      "USD", // Standard 2-decimal currency
-      "EUR", // Standard 2-decimal, space/suffix differences in some locales
-      "JPY", // 0-decimal currency
-      "IQD", // 3-decimal currency
-      "CHF", // Cash rounding to nearest 0.05
-      "CVE"  // Escudo (symbol acts as decimal separator: 100$00)
-  );
+        // Core subset of major currencies matching core locales
+        private static final ImmutableSet<String> CORE_CURRENCIES =
+                ImmutableSet.of("USD", "EUR", "JPY", "RUB", "EGP", "");
 
-  public static final List<CurrencyStyle> CORE_CURRENCY_STYLES = List.of(
-      CurrencyStyle.values()
-  );
+        // Core numbers (deduplicated/shared with decimal)
+        public static final ImmutableSet<Double> CORE_NUMBERS =
+                ImmutableSet.of(0.0, 1.2, 0.00831765, 1234565.0, -1230.05);
 
-  public static final List<CurrencyWidth> CORE_CURRENCY_WIDTHS = List.of(
-      CurrencyWidth.values()
-  );
+        // Currency format length (standard, accounting, compact short)
+        public enum CurrencyFormatLength {
+            STANDARD("standard"),
+            ACCOUNTING("accounting"),
+            SHORT("short");
 
-  public static final List<DecimalFormatLength> CORE_DECIMAL_FORMAT_LENGTHS = List.of(
-      DecimalFormatLength.values()
-  );
+            private final String label;
+            CurrencyFormatLength(String label) { this.label = label; }
+            public String getLabel() { return label; }
+        }
 
-  public static final List<Boolean> CORE_CASH_ROUNDING_OPTIONS = List.of(
-      Boolean.TRUE,
-      Boolean.FALSE
-  );
+        // Currency unit representation
+        public enum CurrencyDisplay {
+            SYMBOL("symbol"),
+            NARROW_SYMBOL("narrowSymbol"),
+            ISO_CODE("code"),
+            NAME("name");
 
-  public static final List<PluralContext> CORE_PLURAL_CONTEXTS = List.of(
-      PluralContext.values()
-  );
+            private final String label;
+            CurrencyDisplay(String label) { this.label = label; }
+            public String getLabel() { return label; }
+        }
 
-  // ==========================================================================
-  // ENUMS
-  // ==========================================================================
+        public static ImmutableSet<String> getCoreLocales() { return CORE_LOCALES; }
+        public static ImmutableSet<String> getCoreCurrencies() { return CORE_CURRENCIES; }
 
-  public enum CurrencyStyle { STANDARD, ACCOUNTING, NAME }
+        public static Set<String> getExtendedModernLocales() {
+            Set<String> modernLocales =
+                    StandardCodes.make()
+                            .getLocaleCoverageLocales(Organization.cldr, EnumSet.of(Level.MODERN));
+            Set<String> extendedModernLocales = new TreeSet<>(modernLocales);
+            extendedModernLocales.removeAll(getCoreLocales());
+            return extendedModernLocales;
+        }
 
-  public enum CurrencyWidth { SYMBOL, NARROW, CODE }
+        public static Set<String> getModernCurrencies() {
+            SupplementalDataInfo sdi = CLDR_CONFIG.getSupplementalDataInfo();
+            Set<String> modernCurrencies = new TreeSet<>();
+            Date now = new Date();
+            for (String territory : sdi.getCurrencyTerritories()) {
+                for (CurrencyDateInfo cdi : sdi.getCurrencyDateInfo(territory)) {
+                    if (cdi.getStart().before(now)
+                            && cdi.getEnd().after(now)
+                            && cdi.isLegalTender()) {
+                        modernCurrencies.add(cdi.getCurrency());
+                    }
+                }
+            }
+            return modernCurrencies;
+        }
 
-  public enum DecimalFormatLength { 
-    COMPACT_SHORT // Note: compact_long is not added/supported yet for currencies
-  }
+        public static Set<String> getExtendedModernCurrencies() {
+            Set<String> allModern = getModernCurrencies();
+            allModern.removeAll(getCoreCurrencies());
+            return allModern;
+        }
 
-  public enum PluralContext { OTHER, ONE, MANY }
+        public static Set<Double> getExtendedNumbers() {
+            // Formulaic generation exactly matching decimal
+            Set<Double> results = new TreeSet<>();
+            for (int i = -6; i <= 12; i++) {
+                results.add(Math.pow(10, i));
+                results.add(Math.pow(10, i) * 1.5);
+                results.add(Math.pow(10, i) * 5);
+            }
+            results.addAll(CORE_NUMBERS);
+            results.add(12.0);
+            results.add(123.0);
+            results.add(1234.56);
+            results.add(1234567.0);
+            results.add(0.000123);
+            results.add(-0.0);
+            results.add(0.5);
+            results.add(1.5);
+            results.add(2.5);
+            results.add(3.5);
+            results.add(0.125);
+            results.add(0.135);
+            results.add(999.9);
+            results.add(999999.9);
 
-  // ==========================================================================
-  // DIMENSION DEFINITIONS (Using the constants above)
-  // ==========================================================================
+            Set<Double> negatives = new TreeSet<>();
+            for (Double d : results) {
+                if (d > 0) { negatives.add(-d); }
+            }
+            results.addAll(negatives);
+            return results;
+        }
 
-  /** 1. Currency Code Dimension */
-  public static final Dimension<String> CURRENCY_CODE = Dimension.<String>builder("currency_code")
-      .mandatory() // Each currency test case must specify a currency code
-      .withCoreSet(CORE_CURRENCY_CODES)
-      .withExtendedSetProvider(CurrencyRegistry::getAllIsoCurrenciesExceptCore)
-      .build();
-
-  /** 2. Currency Style Dimension */
-  public static final Dimension<CurrencyStyle> CURRENCY_STYLE = Dimension.<CurrencyStyle>builder("currency_style")
-      .withDefault(CurrencyStyle.STANDARD)
-      .withCoreSet(CORE_CURRENCY_STYLES)
-      .build();
-
-  /** 3. Currency Width Dimension */
-  public static final Dimension<CurrencyWidth> CURRENCY_WIDTH = Dimension.<CurrencyWidth>builder("currency_width")
-      .withDefault(CurrencyWidth.SYMBOL)
-      .withCoreSet(CORE_CURRENCY_WIDTHS)
-      .build();
-
-  /** 4. Decimal Format Length Dimension */
-  public static final Dimension<DecimalFormatLength> DECIMAL_FORMAT_LENGTH = Dimension.<DecimalFormatLength>builder("decimal_format_length")
-      .withDefault(null) // Null/empty represents standard currency formatting
-      .withCoreSet(CORE_DECIMAL_FORMAT_LENGTHS)
-      .build();
-
-  /** 5. Cash Rounding Dimension */
-  public static final Dimension<Boolean> CASH_ROUNDING = Dimension.<Boolean>builder("cash_rounding")
-      .withDefault(false)
-      .withCoreSet(CORE_CASH_ROUNDING_OPTIONS)
-      .build();
-
-  /** 6. Plural Context Dimension */
-  public static final Dimension<PluralContext> PLURAL_CONTEXT = Dimension.<PluralContext>builder("plural_context")
-      .withDefault(PluralContext.OTHER)
-      .withCoreSet(CORE_PLURAL_CONTEXTS)
-      .build();
+        private Dimensions() {}
+    }
 }
 ```
 
 ---
 
-## 5. Summary of Splitting Plan (Example)
+## 5. Summary of Generated Test Suites
 
-To demonstrate how the files will be structured and split to maintain readability and the 10k line limit:
+To demonstrate how the files are structured and split systematically to maintain readability, version control, and keep size below the 10,000-line threshold:
 
-1. **`decimals.tsv` (Core)**
-   * Dimensions: Core Locale $\times$ Core Value $\times$ Core Sign $\times$ Core Rounding $\times$ Core Compact.
-   * Size: ~5,000 cases. Highly concentrated.
-2. **`decimals_modern_locales_standard_[a-m].tsv` & `[n-z].tsv`**
-   * Dimensions: Extended Locales $\times$ Core Value $\times$ Standard Style (No compact).
-   * Split alphabetically by locale code to stay under 10k lines per file.
-3. **`decimals_modern_locales_compact.tsv`**
-   * Dimensions: Extended Locales $\times$ Core Value $\times$ Compact Style (Short & Long).
-4. **`currencies.tsv` (Core)**
-   * Dimensions: Core Locale $\times$ Core Value $\times$ Core Currencies (USD, JPY, CHF, etc.) $\times$ Core Styles.
-   * Size: ~4,000 cases.
-5. **`currencies_extended_codes.tsv`**
-   * Dimensions: Core Locale $\times$ Core Value $\times$ Extended Currency Codes (all ISO currencies).
-   * Verifies that rare currency symbols and decimal requirements are loaded correctly.
+### 5.1. Decimal Test Suites
+The decimal generator outputs three main files under the `decimal/` directory:
+
+1. **`decimals.tsv` (Core Suite)**
+   * **Combinations:** Core Locales ($9$) $\times$ All Styles ($5$) $\times$ Core Numbers ($5$) = **$225$ test cases**.
+   * **Purpose:** Highly concentrated, fast-running smoke test covering 90% of code paths.
+2. **`decimals_modern_locales.tsv` (Extended Locales Suite)**
+   * **Combinations:** Extended Locales (~$140$) $\times$ All Styles ($5$) $\times$ Core Numbers ($5$) = **~$3,500$ test cases**.
+   * **Purpose:** Thorough coverage of locale-specific formatting rules.
+3. **`decimals_extended_numbers.tsv` (Extended Numbers Suite)**
+   * **Combinations:** Core Locales ($9$) $\times$ All Styles ($5$) $\times$ Extended Numbers (~$120$) = **~$5,400$ test cases**.
+   * **Purpose:** Full validation of mathematical scale and rounding behaviors.
+
+### 5.2. Currency Test Suites
+The currency generator outputs a structured set of files under the `currency/` directory. Due to the extra dimension (Currencies), the extended suites are split systematically by style (`CurrencyDisplay` and `CurrencyFormatLength`) to maintain file readability:
+
+1. **`currencies.tsv` (Core Suite)**
+   * **Combinations:** Core Locales ($9$) $\times$ Core Currencies ($6$) $\times$ All Styles ($12$) $\times$ Core Numbers ($5$) = **$3,240$ test cases**.
+   * **Purpose:** Core validation of major currency formats.
+2. **Extended Modern Currencies (`currencies_{display}_{length}_modern_currencies.tsv`)**
+   * **Combinations:** Core Locales ($9$) $\times$ Extended Currencies (~$150$) $\times$ Single Style ($1$) $\times$ Core Numbers ($5$) = **~$6,750$ test cases per file**.
+   * **Split:** A file is written for each of the $12$ styles (e.g., `currencies_symbol_accounting_modern_currencies.tsv`).
+3. **Extended Modern Locales (`currencies_{display}_{length}_modern_locales.tsv`)**
+   * **Combinations:** Extended Locales (~$140$) $\times$ Core Currencies ($6$) $\times$ Single Style ($1$) $\times$ Core Numbers ($5$) = **~$4,200$ test cases per file**.
+   * **Split:** A file is written for each of the $12$ styles.
+4. **Extended Numbers (`currencies_{display}_{length}_extended_numbers.tsv`)**
+   * **Combinations:** Core Locales ($9$) $\times$ Core Currencies ($6$) $\times$ Single Style ($1$) $\times$ Extended Numbers (~$120$) = **~$6,480$ test cases per file**.
+   * **Split:** A file is written for each of the $12$ styles.
