@@ -1,3 +1,9 @@
+<style>
+  .markdown-body {
+    max-width: 1200px !important;
+  }
+</style>
+
 # Design Document: CLDR Conformance Testing for Decimal & Currency Formatting
 
 ## 1. Goal & Philosophy
