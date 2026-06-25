@@ -118,6 +118,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       </identity>
     </ldml>
     ```
+*   **Core Set:** `ar`, `ar_EG`, `bn`, `de`, `de_CH`, `en`, `ja`, `pt_PT`, `ru`
+*   **Extended Set:** All other modern CLDR locales
+*   **Default Value / Behavior if Empty:** `en`
 
 #### 3.1.2. `number_system` (NumberSystem)
 *   **Why it's a dimension:** Determines the digit set used to represent the number.
@@ -129,6 +132,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       <defaultNumberingSystem>arab</defaultNumberingSystem>
     </numbers>
     ```
+*   **Core Set:** `empty` (uses locale default), `latn`, `arab`
+*   **Extended Set:** `deva`, `beng`
+*   **Default Value / Behavior if Empty:** `empty` (resolves to the locale's default numbering system)
 
 #### 3.1.3. `number_format` (NumberFormat)
 *   **Why it's a dimension:** Controls the core mathematical representation (decimal, percentage, or scientific).
@@ -165,6 +171,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
           </scientificFormatLength>
         </scientificFormats>
         ```
+*   **Core Set:** `decimal`, `percent`, `scientific`
+*   **Extended Set:** *None* (dimension is fully covered in Core)
+*   **Default Value / Behavior if Empty:** `decimal`
 
 #### 3.1.4. `decimal_format_length` (DecimalFormatLength)
 *   **Why it's a dimension:** Controls compact scaling (short vs. long) for space-constrained UIs.
@@ -181,6 +190,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       </decimalFormatLength>
     </decimalFormats>
     ```
+*   **Core Set:** `empty` (standard formatting), `short` (compact short), `long` (compact long)
+*   **Extended Set:** *None* (dimension is fully covered in Core)
+*   **Default Value / Behavior if Empty:** `empty` (standard decimal formatting)
 
 #### 3.1.5. `value` (Value)
 *   **Why it's a dimension:** Value magnitude determines the compact pattern and plural rules applied.
@@ -196,6 +208,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       </decimalFormat>
     </decimalFormatLength>
     ```
+*   **Core Set:** `0.0`, `1.2`, `0.00831765`, `1234565.0`, `-1230.05`
+*   **Extended Set:** Comprehensive mathematical scale: powers of 10 ($10^{-6}$ to $10^{12}$), multiples ($1.5 \times 10^i$, $5 \times 10^i$), edge cases (e.g. `12.0`, `123.0`, `0.125`, `999.9`), and negatives of all values.
+*   **Default Value / Behavior if Empty:** *Mandatory* (no default; an input value must be explicitly provided)
 
 #### 3.1.6. `grouping_strategy` (GroupingStrategy)
 *   **Why it's a dimension:** Controls grouping separator application.
@@ -216,6 +231,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       </decimalFormats>
     </numbers>
     ```
+*   **Core Set:** `auto` (uses locale default grouping), `off` (disables grouping entirely)
+*   **Extended Set:** `min2` (groups only if 2+ digits in the first group), `thousand` (forces 3-digit grouping regardless of locale default)
+*   **Default Value / Behavior if Empty:** `auto`
 
 #### 3.1.7. `rounding_mode` (RoundingMode)
 *   **Why it's a dimension:** Determines how halfway cases are resolved.
@@ -227,6 +245,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       <pattern>#,##0.05</pattern> <!-- Rounds to nearest 0.05; mode is API-driven -->
     </decimalFormat>
     ```
+*   **Core Set:** `half-even` (bankers' rounding, rounds to nearest even)
+*   **Extended Set:** `half-up` (commercial rounding), `up` (away from zero), `down` (toward zero), `ceiling` (toward +infinity), `floor` (toward -infinity)
+*   **Default Value / Behavior if Empty:** `half-even`
 
 #### 3.1.8. `precision` (Precision)
 *   **Why it's a dimension:** Tests custom overrides for fraction and significant digits.
@@ -240,6 +261,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       <pattern>@@@</pattern> <!-- Forces exactly 3 significant digits -->
     </decimalFormat>
     ```
+*   **Core Set:** `default` (uses pattern defaults), `min2` (minimum 2 fraction digits), `max2` (maximum 2 fraction digits)
+*   **Extended Set:** `min0` (forces integer representation), `sig3` (forces exactly 3 significant digits)
+*   **Default Value / Behavior if Empty:** `default`
 
 #### 3.1.9. `sign_display` (SignDisplay)
 *   **Why it's a dimension:** Tests rendering of positive and negative signs.
@@ -251,6 +275,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       <pattern>+#,##0.00;-#,##0.00</pattern> <!-- Explicit positive/negative subpatterns -->
     </decimalFormat>
     ```
+*   **Core Set:** `auto` (shows sign for negative values only), `always` (always shows sign)
+*   **Extended Set:** `never` (hides sign entirely), `except_zero` (shows sign for non-zero values)
+*   **Default Value / Behavior if Empty:** `auto`
 
 #### 3.1.10. `min_integer_digits` (MinIntegerDigits)
 *   **Why it's a dimension:** Tests padding of numbers with leading zeros.
@@ -262,6 +289,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       <pattern>000.##</pattern> <!-- Pads to minimum 3 integer digits, e.g. "5" -> "005" -->
     </decimalFormat>
     ```
+*   **Core Set:** `1` (default, no padding beyond a single zero for decimals)
+*   **Extended Set:** `3` (pads integer part to at least 3 digits, e.g. `005`)
+*   **Default Value / Behavior if Empty:** `1`
 
 #### 3.1.11. `decimal_separator_display` (DecimalSeparatorDisplay)
 *   **Why it's a dimension:** Tests forcing of the decimal separator.
@@ -273,6 +303,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       <pattern>#,##0.</pattern> <!-- Separator always shown, even with empty fraction -->
     </decimalFormat>
     ```
+*   **Core Set:** `auto` (hides separator if no fraction), `always` (always displays the separator)
+*   **Extended Set:** *None* (dimension is fully covered in Core)
+*   **Default Value / Behavior if Empty:** `auto`
 
 ### 3.2. Java API Representation
 
@@ -568,6 +601,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       </numbers>
     </ldml>
     ```
+*   **Core Set:** `ar`, `ar_EG`, `bn`, `de`, `de_CH`, `en`, `ja`, `pt_PT`, `ru`
+*   **Extended Set:** All other modern CLDR locales
+*   **Default Value / Behavior if Empty:** `en`
 
 #### 4.1.2. `currency` (Currency)
 *   **Why it's a dimension:** Currency-specific digits and rounding override locale defaults.
@@ -583,6 +619,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       </fractions>
     </currencyData>
     ```
+*   **Core Set:** `USD` (standard 2-decimal), `EUR` (standard 2-decimal, European spacing), `JPY` (0-decimal), `RUB` (Cyrillic Ruble, complex plurals), `EGP` (Egyptian Pound, RTL Arabic), `empty` (omitted/no currency)
+*   **Extended Set:** All other active legal-tender ISO 4217 currency codes
+*   **Default Value / Behavior if Empty:** `empty` (omitted; formats as a standard decimal/accounting number without a currency unit)
 
 #### 4.1.3. `currency_format_length` (CurrencyFormatLength)
 *   **Why it's a dimension:** Controls standard vs. compact currency formatting.
@@ -599,6 +638,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       </currencyFormatLength>
     </currencyFormats>
     ```
+*   **Core Set:** `standard` (standard currency formatting), `short` (compact short currency formatting)
+*   **Extended Set:** *None* (dimension is fully covered in Core; compact long is not supported for currencies in CLDR)
+*   **Default Value / Behavior if Empty:** `standard`
 
 #### 4.1.4. `currency_format_type` (CurrencyFormatType)
 *   **Why it's a dimension:** Controls standard vs. accounting negative representations.
@@ -615,6 +657,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       </currencyFormat>
     </currencyFormatLength>
     ```
+*   **Core Set:** `standard`, `accounting`
+*   **Extended Set:** *None* (dimension is fully covered in Core)
+*   **Default Value / Behavior if Empty:** `standard`
 
 #### 4.1.5. `currency_display` (CurrencyDisplay)
 *   **Why it's a dimension:** Controls currency unit representation (symbol, narrow symbol, ISO code, full name, or none).
@@ -639,6 +684,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       </currencyFormats>
     </numbers>
     ```
+*   **Core Set:** `symbol` (standard localized symbol, e.g. `$`), `narrowSymbol` (narrow variant), `code` (ISO 4217 code, e.g. `USD`), `name` (plural name, e.g. `US dollar`), `noCurrency` (hides the symbol but keeps currency formatting)
+*   **Extended Set:** *None* (dimension is fully covered in Core)
+*   **Default Value / Behavior if Empty:** `symbol`
 
 #### 4.1.6. `input` (Number/Value)
 *   **Why it's a dimension:** Value magnitude determines plural rules and compact thresholds.
@@ -653,6 +701,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       </currencyFormat>
     </currencyFormatLength>
     ```
+*   **Core Set:** `0.0`, `1.2`, `0.00831765`, `1234565.0`, `-1230.05`
+*   **Extended Set:** Comprehensive mathematical scale: powers of 10 ($10^{-6}$ to $10^{12}$), multiples ($1.5 \times 10^i$, $5 \times 10^i$), edge cases, and negatives. (Identical to Decimal `value` set).
+*   **Default Value / Behavior if Empty:** *Mandatory* (no default; an input amount must be explicitly provided)
 
 #### 4.1.7. `currency_usage` (CurrencyUsage)
 *   **Why it's a dimension:** Accounts for cash rounding rules (e.g., CHF rounding to 0.05).
@@ -667,6 +718,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       </fractions>
     </currencyData>
     ```
+*   **Core Set:** `standard` (standard electronic rounding), `cash` (cash rounding based on circulating coins)
+*   **Extended Set:** *None* (dimension is fully covered in Core)
+*   **Default Value / Behavior if Empty:** `standard`
 
 #### 4.1.8. `grouping_strategy` (GroupingStrategy)
 *   **Why it's a dimension:** Controls grouping separator application.
@@ -678,12 +732,18 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       <pattern>¤#,##0.00</pattern> <!-- Grouping size 3 -->
     </currencyFormat>
     ```
+*   **Core Set:** `auto` (uses locale default grouping), `off` (disables grouping entirely)
+*   **Extended Set:** `min2` (groups only if 2+ digits), `thousand` (forces 3-digit grouping)
+*   **Default Value / Behavior if Empty:** `auto`
 
 #### 4.1.9. `rounding_mode` (RoundingMode)
 *   **Why it's a dimension:** Determines how halfway cases are resolved.
 *   **TR35 Specification:** [TR35 Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns)
 *   **Spec Quote:** *“An implementation may allow the specification of a rounding mode to determine how values are rounded. In the absence of such choices, the default is to round 'half-even'...”* (Section 3)
-*   *Note: Rounding mode is API-driven and not defined in CLDR XML.*
+*   **CLDR XML Example:** *Note: Rounding mode is API-driven and not defined in CLDR XML.*
+*   **Core Set:** `half-even`
+*   **Extended Set:** `half-up`, `up`, `down`, `ceiling`, `floor`
+*   **Default Value / Behavior if Empty:** `half-even`
 
 ### 4.2. Java API Representation
 
