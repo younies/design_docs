@@ -127,14 +127,37 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Why it's a dimension:** Controls the core mathematical representation (decimal, percentage, or scientific).
 *   **TR35 Specification:** [TR35 Number Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Formats)
 *   **Spec Quote:** *“Number formats are used to define the rules for formatting numeric quantities... Different formats are provided for different contexts, as follows: decimalFormats... percentFormats... scientificFormats...”* (Section 2)
-*   **CLDR XML Example (`common/main/en.xml`):**
-    ```xml
-    <decimalFormatLength>
-      <decimalFormat>
-        <pattern>#,##0.###</pattern>
-      </decimalFormat>
-    </decimalFormatLength>
-    ```
+*   **CLDR XML Examples (`common/main/en.xml`):**
+    *   **Decimal Format (`decimal`):**
+        ```xml
+        <decimalFormats numberSystem="latn">
+          <decimalFormatLength>
+            <decimalFormat>
+              <pattern>#,##0.###</pattern>
+            </decimalFormat>
+          </decimalFormatLength>
+        </decimalFormats>
+        ```
+    *   **Percent Format (`percent`):**
+        ```xml
+        <percentFormats numberSystem="latn">
+          <percentFormatLength>
+            <percentFormat>
+              <pattern>#,##0%</pattern>
+            </percentFormat>
+          </percentFormatLength>
+        </percentFormats>
+        ```
+    *   **Scientific Format (`scientific`):**
+        ```xml
+        <scientificFormats numberSystem="latn">
+          <scientificFormatLength>
+            <scientificFormat>
+              <pattern>#E0</pattern>
+            </scientificFormat>
+          </scientificFormatLength>
+        </scientificFormats>
+        ```
 
 #### 3.1.4. `decimal_format_length` (DecimalFormatLength)
 *   **Why it's a dimension:** Controls compact scaling (short vs. long) for space-constrained UIs.
