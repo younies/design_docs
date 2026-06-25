@@ -277,7 +277,7 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
       </symbols>
     </numbers>
     ```
-    *Note: While the UTS #35 specification allows defining explicit positive and negative subpatterns within a pattern string (e.g., `+#,##0.00;-#,##0.00` to force a plus sign), standard CLDR XML locale files in the repository do not utilize explicit positive sign patterns. Instead, they define the localized sign characters in the `<symbols>` block, and the formatting API (ICU) dynamically applies them based on the `SignDisplay` setting (e.g., prepending the `<plusSign>` for positive numbers when `always` is specified).*
+    *Note: While the UTS #35 specification allows defining explicit positive and negative subpatterns within a pattern string (e.g., `+#,##0.00;-#,##0.00` to force a plus sign), standard CLDR XML locale files in the repository do not utilize explicit positive sign patterns. Instead, they define the localized sign characters in the `<symbols>` block. The high-level `sign_display` options (`auto`, `always`, `never`, `except_zero`) are API-level configurations derived from the ICU specifications and ECMA-402 (JavaScript Intl) standards, rather than direct CLDR XML elements. The formatting API (ICU) dynamically applies these options by prepending the `<plusSign>` or hiding the `<minusSign>` as required.*
 *   **Core Set:** `auto` (shows sign for negative values only), `always` (always shows sign)
 *   **Extended Set:** `never` (hides sign entirely), `except_zero` (shows sign for non-zero values)
 *   **Default Value / Behavior if Empty:** `auto`
