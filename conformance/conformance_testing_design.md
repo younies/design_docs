@@ -43,10 +43,10 @@ graph TD
     Combinator -->|Cartesian Product / Filtering| TSVOut[TSV Output Files]
     
     subgraph "Output Files (Decimal)"
-        TSVOut --> CoreTSV[decimals.tsv <br> Core Locales x Core NS x Core Styles x Core Values]
-        TSVOut --> ExtLocTSV[decimals_modern_locales.tsv <br> Extended Locales x Core NS x Core Styles x Core Values]
-        TSVOut --> ExtValTSV[decimals_extended_values.tsv <br> Core Locales x Core NS x Core Styles x Extended Values]
-        TSVOut --> ExtNSTSV[decimals_extended_number_systems.tsv <br> Core Locales x Extended NS x Core Styles x Core Values]
+        TSVOut --> CoreTSV[core.tsv <br> Core Locales x Core NS x Core Styles x Core Values]
+        TSVOut --> ExtLocTSV[mod_loc.tsv <br> Extended Locales x Core NS x Core Styles x Core Values]
+        TSVOut --> ExtValTSV[ext_num.tsv <br> Core Locales x Core NS x Core Styles x Extended Numbers]
+        TSVOut --> ExtNSTSV[ext_ns.tsv <br> Core Locales x Extended NS x Core Styles x Core Values]
     end
 ```
 
@@ -68,18 +68,18 @@ A `Dimension` represents a single input variable or configuration option that in
 The `Combinator` is responsible for taking all defined dimensions and orchestrating their combination to produce the final test suites, saving them as Tab-Separated Values (TSV) files.
 
 #### Combination & Splitting Strategy:
-1. **Core Test Suite (`decimals.tsv` / `currencies.tsv`):** 
-   Generates a Cartesian product of the **Core Sets** of all dimensions. This compact suite is designed to cover approximately **90% of all distinct logic paths and edge cases** (e.g., standard styles across high-signal locales, numbering systems, and representative values) with a minimal footprint.
-2. **Extended Locales Suite (`decimals_modern_locales.tsv` / `currencies_*_modern_locales.tsv`):**
+1. **Core Test Suite (`core.tsv`):** 
+   Generates a Cartesian product of the **Core Sets** of all dimensions. This compact suite is designed to cover approximately **90% of all distinct logic paths and edge cases** (e.g., standard styles across high-signal locales, numbering systems, and representative values) with a minimal footprint. Placed under `decimal/core.tsv` and `currency/core.tsv`.
+2. **Extended Locales Suite (`mod_loc.tsv` / `*_mod_loc.tsv`):**
    Pairs the **Extended Modern Locales** set with the **Core Sets** of all other dimensions to verify language-specific rules across the long tail.
-3. **Extended Values Suite (`decimals_extended_values.tsv` / `currencies_*_extended_values.tsv`):**
-   Pairs the **Extended Values** set (exhaustive powers of 10, rounding edge cases) with the **Core Locales**, Core Numbering Systems, and Core styles to verify mathematical precision and scale transitions.
-4. **Extended Numbering Systems Suite (`decimals_extended_number_systems.tsv` / `currencies_*_extended_number_systems.tsv`):**
+3. **Extended Numbers Suite (`ext_num.tsv` / `*_ext_num.tsv`):**
+   Pairs the **Extended Numbers** set (exhaustive powers of 10, rounding edge cases) with the **Core Locales**, Core Numbering Systems, and Core styles to verify mathematical precision and scale transitions.
+4. **Extended Numbering Systems Suite (`ext_ns.tsv` / `*_ext_ns.tsv`):**
    Pairs the **Extended Numbering Systems** set (e.g., Devanagari, Bengali digits) with Core Locales, Core styles, and Core values to verify digit shape rendering across scripts.
-5. **Extended Currencies Suite (Currency only - `currencies_*_modern_currencies.tsv`):**
+5. **Extended Currencies Suite (Currency only - `*_mod_cur.tsv`):**
    Pairs the **Extended Modern Currencies** set with the Core Locales, Core Numbering Systems, and Core styles to verify rare currency symbol rendering, ISO codes, and custom decimal rules.
 6. **Deduplication:** Extended sets strictly exclude values already present in the core sets to prevent redundant test cases.
-7. **File Size Management:** To keep files manageable for version control and test runners, the currency extended suites are split by formatting style and representation (e.g., splitting into `currencies_symbol_accounting_modern_currencies.tsv`, etc.) ensuring no single file exceeds comfortable reading limits (max 10,000 lines).
+7. **File Size Management:** To keep files manageable for version control and test runners, the currency extended suites are split by formatting style and representation (e.g., splitting into `symbol_acc_mod_cur.tsv`, etc.) ensuring no single file exceeds comfortable reading limits (max 10,000 lines).
 
 ---
 
@@ -536,33 +536,33 @@ To demonstrate how the files are structured and split systematically to maintain
 ### 5.1. Decimal Test Suites
 The decimal generator outputs four main files under the `decimal/` directory. To maintain file readability and keep sizes manageable, if any extended suite file exceeds the 10,000-line threshold, it can be split systematically by style (similar to the currency suites).
 
-1. **`decimals.tsv` (Core Suite)**
+1. **`core.tsv` (Core Suite)**
    * **Combinations:** Core Locales ($9$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) $\times$ Core Precision ($3$) $\times$ Core Sign Display ($2$) $\times$ Core Min Integer Digits ($1$) $\times$ Core Decimal Separator Display ($1$) = **$8,100$ test cases**.
    * **Purpose:** Highly concentrated, fast-running smoke test covering 90% of code paths.
-2. **`decimals_modern_locales.tsv` (Extended Locales Suite)**
+2. **`mod_loc.tsv` (Extended Locales Suite)**
    * **Combinations:** Extended Locales (~$140$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) $\times$ Core Precision ($3$) $\times$ Core Sign Display ($2$) = **~$126,000$ test cases** (can be split by style if needed).
    * **Purpose:** Thorough coverage of locale-specific formatting rules.
-3. **`decimals_extended_values.tsv` (Extended Values Suite)**
+3. **`ext_num.tsv` (Extended Numbers Suite)**
    * **Combinations:** Core Locales ($9$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Extended Values (~$120$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) $\times$ Core Precision ($3$) $\times$ Core Sign Display ($2$) = **~$194,400$ test cases** (can be split by style if needed).
    * **Purpose:** Full validation of mathematical scale and rounding behaviors.
-4. **`decimals_extended_number_systems.tsv` (Extended Numbering Systems Suite)**
+4. **`ext_ns.tsv` (Extended Numbering Systems Suite)**
    * **Combinations:** Core Locales ($9$) $\times$ Extended NS ($2$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) $\times$ Core Precision ($3$) $\times$ Core Sign Display ($2$) = **$5,400$ test cases**.
    * **Purpose:** Direct testing of digit representation in less common numbering systems.
 
 ### 5.2. Currency Test Suites
 The currency generator outputs a structured set of files under the `currency/` directory. Due to the extra dimensions (Currencies and Usage), the extended suites are split systematically by style (combinations of `CurrencyDisplay`, `CurrencyFormatLength`, and `CurrencyFormatType`) to maintain file readability.
 
-There are **12 distinct styles** (4 display types $\times$ 3 valid length/type pairs). The files for extended suites are split by style, using a suffix format: `_{display}[_{type}][_{length}]` (where default `standard` values are omitted from the filename, e.g., `_symbol`, `_symbol_accounting`, or `_symbol_short`).
+There are **12 distinct styles** (4 display types $\times$ 3 valid length/type pairs). The files for extended suites are split by style, using a prefix format: `{display}[_{type}][_{length}]` (where default `standard` values are omitted, e.g., `symbol`, `symbol_acc`, or `symbol_short`).
 
-1. **`currencies.tsv` (Core Suite)**
+1. **`core.tsv` (Core Suite)**
    * **Combinations:** Core Locales ($9$) $\times$ Core Currencies ($6$) $\times$ Core Usages ($2$) $\times$ All Styles ($12$) $\times$ Core Numbers ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) = **$12,960$ test cases**.
    * **Purpose:** Core validation of major currency formats.
-2. **Extended Modern Currencies (`currencies_{style_suffix}_modern_currencies.tsv`)**
+2. **Extended Modern Currencies (`{style_prefix}_mod_cur.tsv`)**
    * **Combinations:** Core Locales ($9$) $\times$ Core Usages ($2$) $\times$ Extended Currencies (~$150$) $\times$ Single Style ($1$) $\times$ Core Numbers ($5$) = **~$13,500$ test cases per file**.
-   * **Split:** A file is written for each of the $12$ styles (e.g., `currencies_symbol_accounting_modern_currencies.tsv`).
-3. **Extended Modern Locales (`currencies_{style_suffix}_modern_locales.tsv`)**
+   * **Split:** A file is written for each of the $12$ styles (e.g., `symbol_acc_mod_cur.tsv`).
+3. **Extended Modern Locales (`{style_prefix}_mod_loc.tsv`)**
    * **Combinations:** Extended Locales (~$140$) $\times$ Core Usages ($2$) $\times$ Core Currencies ($6$) $\times$ Single Style ($1$) $\times$ Core Numbers ($5$) = **~$8,400$ test cases per file**.
    * **Split:** A file is written for each of the $12$ styles.
-4. **Extended Numbers (`currencies_{style_suffix}_extended_numbers.tsv`)**
+4. **Extended Numbers (`{style_prefix}_ext_num.tsv`)**
    * **Combinations:** Core Locales ($9$) $\times$ Core Usages ($2$) $\times$ Core Currencies ($6$) $\times$ Single Style ($1$) $\times$ Extended Numbers (~$120$) = **~$12,960$ test cases per file**.
    * **Split:** A file is written for each of the $12$ styles.
