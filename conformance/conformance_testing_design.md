@@ -109,10 +109,15 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Why it's a dimension:** Number formatting is highly locale-dependent.
 *   **TR35 Specification:** [UTS #35 Locale & Numbers](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Symbols)
 *   **Spec Quote:** *“Number symbols define the localized symbols that are commonly used when formatting numbers in a given locale.”* (Section 2)
-*   **CLDR Source Files:** 
-    *   `common/main/en.xml` (English rules)
-    *   `common/main/ar.xml` (Arabic rules)
-    *   `common/main/de.xml` (German rules)
+*   **CLDR XML Example (`common/main/en.xml` - Locale Identity):**
+    ```xml
+    <ldml>
+      <identity>
+        <version number="$Revision$"/>
+        <language type="en"/>
+      </identity>
+    </ldml>
+    ```
 
 #### 3.1.2. `number_system` (NumberSystem)
 *   **Why it's a dimension:** Determines the digit set used to represent the number.
@@ -120,7 +125,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“Numbering systems information is used to define different representations for numeric values to an end user. ... Numeric systems are simply a decimal based system that uses a predefined set of digits to represent numbers.”* (Section 1)
 *   **CLDR XML Example (`common/main/ar.xml`):**
     ```xml
-    <defaultNumberingSystem>arab</defaultNumberingSystem>
+    <numbers>
+      <defaultNumberingSystem>arab</defaultNumberingSystem>
+    </numbers>
     ```
 
 #### 3.1.3. `number_format` (NumberFormat)
@@ -165,7 +172,14 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“A pattern type attribute is used for compact number formats... The short non-currency format is designed for UI environments where space is at a premium...”* (Section 2)
 *   **CLDR XML Example (`common/main/en.xml`):**
     ```xml
-    <decimalFormatLength type="short">
+    <decimalFormats numberSystem="latn">
+      <decimalFormatLength type="short">
+        <decimalFormat>
+          <pattern type="1000" count="one">0K</pattern>
+          <pattern type="1000" count="other">0K</pattern>
+        </decimalFormat>
+      </decimalFormatLength>
+    </decimalFormats>
     ```
 
 #### 3.1.5. `value` (Value)
@@ -174,7 +188,13 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“To format a... unit type for a particular numeric value, determine the count value according to the plural rules for the language, then select the appropriate display form...”* (Section 5)
 *   **CLDR XML Example (`common/main/en.xml`):**
     ```xml
-    <pattern type="1000" count="one">0K</pattern>
+    <decimalFormatLength type="short">
+      <decimalFormat>
+        <pattern type="1000" count="one">0K</pattern>
+        <pattern type="1000" count="other">0K</pattern>
+        <pattern type="10000" count="one">00K</pattern>
+      </decimalFormat>
+    </decimalFormatLength>
     ```
 
 #### 3.1.6. `grouping_strategy` (GroupingStrategy)
@@ -183,15 +203,30 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“The grouping separator is a character that separates clusters of integer digits... The grouping size is the number of digits between the grouping separators...”* (Section 3)
 *   **CLDR XML Example (`common/main/en.xml`):**
     ```xml
-    <pattern>#,##0.###</pattern> <!-- Grouping size 3 -->
-    <minimumGroupingDigits>2</minimumGroupingDigits>
+    <numbers>
+      <symbols numberSystem="latn">
+        <group>,</group>
+      </symbols>
+      <decimalFormats numberSystem="latn">
+        <decimalFormatLength>
+          <decimalFormat>
+            <pattern>#,##0.###</pattern> <!-- Defines grouping size 3 -->
+          </decimalFormat>
+        </decimalFormatLength>
+      </decimalFormats>
+    </numbers>
     ```
 
 #### 3.1.7. `rounding_mode` (RoundingMode)
 *   **Why it's a dimension:** Determines how halfway cases are resolved.
 *   **TR35 Specification:** [TR35 Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns)
 *   **Spec Quote:** *“An implementation may allow the specification of a rounding mode to determine how values are rounded. In the absence of such choices, the default is to round 'half-even'...”* (Section 3)
-*   *Note: Rounding mode is API-driven and not defined in CLDR XML.*
+*   **CLDR XML Example (Rounding Increment in Pattern):**
+    ```xml
+    <decimalFormat>
+      <pattern>#,##0.05</pattern> <!-- Rounds to nearest 0.05; mode is API-driven -->
+    </decimalFormat>
+    ```
 
 #### 3.1.8. `precision` (Precision)
 *   **Why it's a dimension:** Tests custom overrides for fraction and significant digits.
@@ -199,8 +234,11 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“There are two ways of controlling how many digits are shown: (a) significant digits counts, or (b) integer and fraction digit counts. ... In order to enable significant digits formatting, use a pattern containing the '@' character.”* (Section 3)
 *   **CLDR XML Example (`common/main/en.xml`):**
     ```xml
-    <pattern>#,##0.00</pattern> <!-- Forces 2 decimal places -->
-    <pattern>@@@</pattern> <!-- Forces exactly 3 significant digits -->
+    <decimalFormat>
+      <pattern>#,##0.00</pattern> <!-- Forces exactly 2 fraction digits -->
+      <!-- OR for significant digits: -->
+      <pattern>@@@</pattern> <!-- Forces exactly 3 significant digits -->
+    </decimalFormat>
     ```
 
 #### 3.1.9. `sign_display` (SignDisplay)
@@ -209,7 +247,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“either the positive and negative prefixes or the suffixes must be distinct for any parser using this data to be able to distinguish positive from negative values.”* (Section 3)
 *   **CLDR XML Example (`common/main/en.xml`):**
     ```xml
-    <pattern>+#,##0.00;-#,##0.00</pattern> <!-- Explicit positive/negative subpatterns -->
+    <decimalFormat>
+      <pattern>+#,##0.00;-#,##0.00</pattern> <!-- Explicit positive/negative subpatterns -->
+    </decimalFormat>
     ```
 
 #### 3.1.10. `min_integer_digits` (MinIntegerDigits)
@@ -218,7 +258,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“A '0' indicates zero-padding: if the number is too short, a zero (in the locale's numeric set) will go there. A '#' indicates no padding...”* (Section 3)
 *   **CLDR XML Example (`common/main/en.xml`):**
     ```xml
-    <pattern>000.##</pattern> <!-- e.g., formats 5 to "005" -->
+    <decimalFormat>
+      <pattern>000.##</pattern> <!-- Pads to minimum 3 integer digits, e.g. "5" -> "005" -->
+    </decimalFormat>
     ```
 
 #### 3.1.11. `decimal_separator_display` (DecimalSeparatorDisplay)
@@ -227,12 +269,12 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“The '.' shows where the decimal point should go. ... Notice how the pattern characters ',' and '.' are replaced by the characters appropriate for the locale.”* (Section 3)
 *   **CLDR XML Example (`common/main/en.xml`):**
     ```xml
-    <pattern>#,##0.</pattern> <!-- Separator always shown -->
+    <decimalFormat>
+      <pattern>#,##0.</pattern> <!-- Separator always shown, even with empty fraction -->
+    </decimalFormat>
     ```
 
-### 3.2. Java API Representation` | `auto` |
-
-### 3.1. Java API Representation
+### 3.2. Java API Representation
 
 To keep the specification and implementation in perfect alignment, the following Java code snippet reflects the exact `Dimensions` structure and datasets implemented in `GenerateDecimalFormatTestData.java`:
 
@@ -512,10 +554,20 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Why it's a dimension:** Currency formatting is highly locale-dependent (symbol placement, spacing, separators).
 *   **TR35 Specification:** [UTS #35 Locale & Numbers](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Symbols)
 *   **Spec Quote:** *“Number symbols define the localized symbols that are commonly used when formatting numbers in a given locale.”* (Section 2)
-*   **CLDR Source Files (Currency patterns/spacing):**
-    *   `common/main/en.xml` (English rules)
-    *   `common/main/ar.xml` (Arabic rules)
-    *   `common/main/de.xml` (German rules)
+*   **CLDR XML Example (`common/main/en.xml` - Locale Identity & Number System Context):**
+    ```xml
+    <ldml>
+      <identity>
+        <version number="$Revision$"/>
+        <language type="en"/>
+      </identity>
+      <numbers>
+        <currencyFormats numberSystem="latn">
+          <!-- Currency patterns are defined here -->
+        </currencyFormats>
+      </numbers>
+    </ldml>
+    ```
 
 #### 4.1.2. `currency` (Currency)
 *   **Why it's a dimension:** Currency-specific digits and rounding override locale defaults.
@@ -523,8 +575,13 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“The formatting of a currency value can depend on the currency itself. ... In the supplemental currency data... [rounding and digits] override whatever is given in the currency numberFormat.”* (Section 5)
 *   **CLDR XML Example (`common/supplemental/supplementalData.xml`):**
     ```xml
-    <info iso4217="USD" digits="2" rounding="0"/>
-    <info iso4217="JPY" digits="0" rounding="0"/>
+    <currencyData>
+      <fractions>
+        <info iso4217="USD" digits="2" rounding="0"/>
+        <info iso4217="JPY" digits="0" rounding="0"/>
+        <info iso4217="DEFAULT" digits="2" rounding="0"/>
+      </fractions>
+    </currencyData>
     ```
 
 #### 4.1.3. `currency_format_length` (CurrencyFormatLength)
@@ -533,7 +590,14 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“The short currency format will include currency symbols, and should ideally be no more than 8 em in width... [For compact currency formats] the compact decimal format... should be used if no alt='noCurrency' pattern is present...”* (Section 2)
 *   **CLDR XML Example (`common/main/en.xml`):**
     ```xml
-    <currencyFormatLength type="short">
+    <currencyFormats numberSystem="latn">
+      <currencyFormatLength type="short">
+        <currencyFormat type="standard">
+          <pattern type="1000" count="one">¤0K</pattern>
+          <pattern type="1000" count="other">¤0K</pattern>
+        </currencyFormat>
+      </currencyFormatLength>
+    </currencyFormats>
     ```
 
 #### 4.1.4. `currency_format_type` (CurrencyFormatType)
@@ -542,8 +606,14 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“In addition to a standard currency format... locales may provide an 'accounting' form, in which... the same example would appear as '($3.27)'. The locale keyword 'cf' can be used to select the standard or accounting form...”* (Section 2)
 *   **CLDR XML Example (`common/main/en.xml`):**
     ```xml
-    <currencyFormat type="standard">
-    <currencyFormat type="accounting">
+    <currencyFormatLength>
+      <currencyFormat type="standard">
+        <pattern>¤#,##0.00</pattern>
+      </currencyFormat>
+      <currencyFormat type="accounting">
+        <pattern>¤#,##0.00;(¤#,##0.00)</pattern>
+      </currencyFormat>
+    </currencyFormatLength>
     ```
 
 #### 4.1.5. `currency_display` (CurrencyDisplay)
@@ -552,8 +622,22 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“Any sequence [of ¤] is replaced by the localized currency symbol... ¤: Standard currency symbol... ¤¤: ISO currency symbol... ¤¤¤: Appropriate currency display name... ¤¤¤¤¤: Narrow currency symbol...”* (Section 3.2) <br><br> *“The alt="noCurrency" pattern can be used when a currency-style format is desired but without the currency symbol.”* (Section 2.1)
 *   **CLDR XML Example (`common/main/en.xml`):**
     ```xml
-    <pattern>¤#,##0.00</pattern> <!-- Uses standard symbol -->
-    <pattern alt="noCurrency">#,##0.00</pattern> <!-- Omit symbol, keep formatting -->
+    <numbers>
+      <currencies>
+        <currency type="USD">
+          <symbol>$</symbol>
+          <displayName>US Dollar</displayName>
+        </currency>
+      </currencies>
+      <currencyFormats numberSystem="latn">
+        <currencyFormatLength>
+          <currencyFormat type="standard">
+            <pattern>¤#,##0.00</pattern> <!-- ¤ resolves to symbol ($) -->
+            <pattern alt="noCurrency">#,##0.00</pattern> <!-- Omit symbol, keep rounding/decimals -->
+          </currencyFormat>
+        </currencyFormatLength>
+      </currencyFormats>
+    </numbers>
     ```
 
 #### 4.1.6. `input` (Number/Value)
@@ -562,7 +646,12 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“To format a... unit type for a particular numeric value, determine the count value according to the plural rules for the language, then select the appropriate display form...”* (Section 5)
 *   **CLDR XML Example (`common/main/en.xml`):**
     ```xml
-    <pattern type="1000" count="one">¤0K</pattern>
+    <currencyFormatLength type="short">
+      <currencyFormat type="standard">
+        <pattern type="1000" count="one">¤0K</pattern>
+        <pattern type="1000" count="other">¤0K</pattern>
+      </currencyFormat>
+    </currencyFormatLength>
     ```
 
 #### 4.1.7. `currency_usage` (CurrencyUsage)
@@ -571,7 +660,12 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“cashRounding: the cash rounding increment... to be used when formatting quantities used in cash transactions (as opposed to a quantity that would appear in a more formal setting, such as on a bank statement).”* (Section 5)
 *   **CLDR XML Example (`common/supplemental/supplementalData.xml`):**
     ```xml
-    <info iso4217="CHF" digits="2" rounding="0" cashRounding="5"/>
+    <currencyData>
+      <fractions>
+        <info iso4217="CHF" digits="2" rounding="0" cashRounding="5"/> <!-- Cash rounds to 0.05 -->
+        <info iso4217="CAD" digits="2" rounding="0" cashRounding="5"/>
+      </fractions>
+    </currencyData>
     ```
 
 #### 4.1.8. `grouping_strategy` (GroupingStrategy)
@@ -580,7 +674,9 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Spec Quote:** *“The grouping separator is a character that separates clusters of integer digits... The grouping size is the number of digits between the grouping separators...”* (Section 3)
 *   **CLDR XML Example (`common/main/en.xml`):**
     ```xml
-    <pattern>¤#,##0.00</pattern> <!-- Grouping size 3 -->
+    <currencyFormat type="standard">
+      <pattern>¤#,##0.00</pattern> <!-- Grouping size 3 -->
+    </currencyFormat>
     ```
 
 #### 4.1.9. `rounding_mode` (RoundingMode)
