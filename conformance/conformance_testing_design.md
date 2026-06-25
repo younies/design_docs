@@ -268,12 +268,16 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Why it's a dimension:** Tests rendering of positive and negative signs.
 *   **TR35 Specification:** [TR35 Sign Display](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns)
 *   **Spec Quote:** *“either the positive and negative prefixes or the suffixes must be distinct for any parser using this data to be able to distinguish positive from negative values.”* (Section 3)
-*   **CLDR XML Example (`common/main/en.xml`):**
+*   **CLDR XML Example (`common/main/en.xml` - Sign Symbols):**
     ```xml
-    <decimalFormat>
-      <pattern>+#,##0.00;-#,##0.00</pattern> <!-- Explicit positive/negative subpatterns -->
-    </decimalFormat>
+    <numbers>
+      <symbols numberSystem="latn">
+        <plusSign>+</plusSign>
+        <minusSign>-</minusSign>
+      </symbols>
+    </numbers>
     ```
+    *Note: While the UTS #35 specification allows defining explicit positive and negative subpatterns within a pattern string (e.g., `+#,##0.00;-#,##0.00` to force a plus sign), standard CLDR XML locale files in the repository do not utilize explicit positive sign patterns. Instead, they define the localized sign characters in the `<symbols>` block, and the formatting API (ICU) dynamically applies them based on the `SignDisplay` setting (e.g., prepending the `<plusSign>` for positive numbers when `always` is specified).*
 *   **Core Set:** `auto` (shows sign for negative values only), `always` (always shows sign)
 *   **Extended Set:** `never` (hides sign entirely), `except_zero` (shows sign for non-zero values)
 *   **Default Value / Behavior if Empty:** `auto`
