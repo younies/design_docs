@@ -81,6 +81,44 @@ The `Combinator` is responsible for taking all defined dimensions and orchestrat
 6. **Deduplication:** Extended sets strictly exclude values already present in the core sets to prevent redundant test cases.
 7. **File Size Management:** To keep files manageable for version control and test runners, the currency extended suites are split by formatting style and representation (e.g., splitting into `symbol_acc_mod_cur.tsv`, etc.) ensuring no single file exceeds comfortable reading limits (max 10,000 lines).
 
+### 2.3. Combinatorial Optimization (Tiny Core Sets)
+
+To prevent **combinatorial explosion** while maintaining high coverage across the long tail, the generator employs an optimization strategy using **Tiny Core Sets** (Minimal Core Subsets) when constructing the Extended Suites.
+
+#### The Problem: Combinatorial Explosion
+If we pair an **Extended Set** of one dimension (e.g., all 150+ modern currencies) with the **full Core Sets** of all other dimensions (9 locales, 5 values, 2 grouping strategies, 2 format types, 5 displays), we end up with a massive number of redundant test cases:
+$$\text{Total Cases} = 150 \times 9 \times 5 \times 2 \times 2 \times 5 = 135,000\text{ cases per file}$$
+This results in extremely large test files, high disk usage, and slow test execution times.
+
+#### The Solution: Tiny Core Sets
+Instead of pairing the active Extended dimension with the *full* Core Sets of other dimensions, the generator pairs it with a **Tiny Core Set**—a minimal, highly representative subset containing only the most critical variations:
+
+1.  **Tiny Locales (3 locales instead of 9):**
+    *   `en` (English: LTR, dot/comma separators, standard symbol placement)
+    *   `ar` (Arabic: RTL, Latin digits, right-to-left symbol/minus placement)
+    *   `de` (German: LTR, comma/dot separators, space-separated suffix symbol placement)
+    *   *Rationale:* Covers LTR, RTL, suffix/prefix placement, and comma/dot separator variations.
+2.  **Tiny Values (2 values instead of 5):**
+    *   `1.2` (Positive decimal, standard formatting and rounding)
+    *   `-1230.05` (Negative decimal with grouping, negative signs, grouping, and accounting parentheses)
+    *   *Rationale:* Covers positive/negative, grouping/non-grouping, and rounding.
+3.  **Tiny Currencies (2 currencies instead of 6 - Currency only):**
+    *   `USD` (Standard 2-decimal currency)
+    *   `JPY` (0-decimal currency, triggers integer-only formatting and rounding)
+    *   *Rationale:* Covers standard fractional vs. integer-only currency rounding and formatting rules.
+
+#### Optimized Combination Strategy
+When generating an **Extended Suite** for a target dimension, the generator loops over the target's extended values, but restricts all other dimensions to their **Tiny Core Sets** (and locks non-relevant dimensions to a single default value):
+
+*   **Extended Currencies Suite:** Pairs Extended Currencies with `TINY_LOCALES` and `TINY_VALUES` (locked to standard format type, symbol display, and auto grouping).
+    $$\text{Optimized Cases} = 150\text{ Currencies} \times 3\text{ Locales} \times 2\text{ Values} = 900\text{ cases per file (99.3\% reduction)}$$
+*   **Extended Locales Suite:** Pairs Extended Locales with `TINY_CURRENCIES` and `TINY_VALUES`.
+    $$\text{Optimized Cases} = 100\text{ Locales} \times 2\text{ Currencies} \times 2\text{ Values} = 400\text{ cases per file}$$
+*   **Extended Numbers Suite:** Pairs Extended Numbers with `TINY_LOCALES` and `TINY_CURRENCIES`.
+    $$\text{Optimized Cases} = 110\text{ Numbers} \times 3\text{ Locales} \times 2\text{ Currencies} = 660\text{ cases per file}$$
+
+This optimization dramatically reduces the test suite footprint and execution time while ensuring that every extended value is still rigorously verified in key representative environments.
+
 ---
 
 ## 3. Decimal Formatting Dimensions
