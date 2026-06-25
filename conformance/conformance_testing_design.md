@@ -96,6 +96,10 @@ This section details the dimensions implemented in the decimal formatting test g
 | `value` <br> **Java Name:** `Value` | The input numeric value (represented as a standard double) to be formatted. | [TR35 Number Format Patterns & Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** The value's magnitude determines the compact format pattern selected and the plural rules applied to compact long names. <br><br> *“The compact pattern selected depends on the magnitude of the value.”* (Section 4) <br> *“Plural rules apply to the compact long formats based on the formatted value.”* (Section 4) | `0.0`, `1.2`, `0.00831765`<br>`1234565.0`, `-1230.05` | Comprehensive mathematical scale:<br>- Powers of 10 ($10^{-6}$ to $10^{12}$)<br>- Multiples ($1.5 \times 10^i$, $5 \times 10^i$)<br>- Edge cases: `12.0`, `123.0`, `1234.56`, `1234567.0`, `0.000123`, `-0.0`, `0.5`, `1.5`, `2.5`, `3.5`, `0.125`, `0.135`, `999.9`, `999999.9`<br>- Negatives of all the above. | *Mandatory* (No default) |
 | `grouping_strategy` <br> **Java Name:** `GroupingStrategy` | Controls the application of digit grouping separators. | [TR35 Grouping](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Controls whether grouping is enabled, disabled, or uses specific strategies like min2 (highly locale-dependent). <br><br> *“The grouping size... is the number of digits between grouping separators. ... The grouping separator is placed according to the grouping size.”* (Section 3) | `auto` (Uses locale default grouping)<br>`off` (Disables grouping entirely) | `min2` (Groups only if 2+ digits in first group)<br>`thousand` (Forces 3-digit grouping) | `auto` |
 | `rounding_mode` <br> **Java Name:** `RoundingMode` | Controls the mathematical rounding algorithm when rounding fractional digits. | [TR35 Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Determines how halfway cases are resolved (e.g., banker's rounding vs. standard round-half-up). <br><br> *“Rounding increments and rounding modes are used to round values to a specific precision.”* (Section 3) | `half-even` (Bankers rounding, rounds to nearest even) | `half-up` (Commercial rounding)<br>`up` (Away from zero)<br>`down` (Toward zero)<br>`ceiling` (Toward +infinity)<br>`floor` (Toward -infinity) | `half-even` |
+| `precision` <br> **Java Name:** `Precision` | Overrides the default fractional or significant digit precision. | [TR35 Digit Precision](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Tests custom overrides for minimum/maximum fraction digits and significant digits. <br><br> *“Rounding increments and rounding modes are used to round values to a specific precision... `@` represents a significant digit.”* (Section 3) | `default` (Uses pattern defaults)<br>`min2` (Minimum 2 fraction digits, pads with zeros)<br>`max2` (Maximum 2 fraction digits, rounds value) | `min0` (Forces integer representation)<br>`sig3` (Limits to 3 significant digits) | `default` |
+| `sign_display` <br> **Java Name:** `SignDisplay` | Controls when the positive or negative sign is displayed. | [TR35 Sign Display](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Tests rendering of positive signs (`+1.23`) and hiding of signs entirely (`never`). <br><br> *“The pattern defines the layout of the formatted number, including grouping, decimals, and sign.”* (Section 3) | `auto` (Shows sign for negatives only)<br>`always` (Always shows sign) | `never` (Hides sign entirely)<br>`except_zero` (Shows sign for non-zero values) | `auto` |
+| `min_integer_digits` <br> **Java Name:** `MinIntegerDigits` | Controls the minimum number of digits displayed to the left of the decimal separator, padding with leading zeros if necessary. | [TR35 Integer Padding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Tests padding of numbers with leading zeros (e.g., `005`). <br><br> *“0: A digit. Zero shows as 0 if there is no digit in that position.”* (Section 3) | `1` (Default, no padding) | `3` (Pads to 3 digits, e.g., `005`) | `1` |
+| `decimal_separator_display` <br> **Java Name:** `DecimalSeparatorDisplay` | Controls whether the decimal separator is shown when the fractional part is empty. | [TR35 Decimal Separator](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Tests forcing of the decimal separator (e.g., `123.`). <br><br> *“.: Local decimal separator... Shows always if the pattern contains a dot.”* (Section 3) | `auto` (Hides separator if no fraction)<br>`always` (Always shows decimal separator) | `always` | `auto` |
 
 ### 3.1. Java API Representation
 
@@ -135,6 +139,22 @@ public final class GenerateDecimalFormatTestData {
         // Core subset of rounding modes
         private static final ImmutableSet<RoundingMode> CORE_ROUNDING_MODES =
                 ImmutableSet.of(RoundingMode.HALF_EVEN);
+
+        // Core subset of precisions
+        private static final ImmutableSet<Precision> CORE_PRECISIONS =
+                ImmutableSet.of(Precision.DEFAULT, Precision.MIN2, Precision.MAX2);
+
+        // Core subset of sign displays
+        private static final ImmutableSet<SignDisplay> CORE_SIGN_DISPLAYS =
+                ImmutableSet.of(SignDisplay.AUTO, SignDisplay.ALWAYS);
+
+        // Core subset of minimum integer digits
+        private static final ImmutableSet<Integer> CORE_MIN_INTEGER_DIGITS =
+                ImmutableSet.of(1);
+
+        // Core subset of decimal separator displays
+        private static final ImmutableSet<DecimalSeparatorDisplay> CORE_DECIMAL_SEPARATOR_DISPLAYS =
+                ImmutableSet.of(DecimalSeparatorDisplay.AUTO);
 
         // Numbering System dimension
         public enum NumberSystem {
@@ -207,10 +227,49 @@ public final class GenerateDecimalFormatTestData {
             public String getLabel() { return label; }
         }
 
+        // Precision override dimension
+        public enum Precision {
+            DEFAULT("default"),
+            MIN2("min2"),
+            MAX2("max2"),
+            MIN0("min0"),
+            SIG3("sig3");
+
+            private final String label;
+            Precision(String label) { this.label = label; }
+            public String getLabel() { return label; }
+        }
+
+        // Sign display dimension
+        public enum SignDisplay {
+            AUTO("auto"),
+            ALWAYS("always"),
+            NEVER("never"),
+            EXCEPT_ZERO("except-zero");
+
+            private final String label;
+            SignDisplay(String label) { this.label = label; }
+            public String getLabel() { return label; }
+        }
+
+        // Decimal separator display dimension
+        public enum DecimalSeparatorDisplay {
+            AUTO("auto"),
+            ALWAYS("always");
+
+            private final String label;
+            DecimalSeparatorDisplay(String label) { this.label = label; }
+            public String getLabel() { return label; }
+        }
+
         public static ImmutableSet<String> getCoreLocales() { return CORE_LOCALES; }
         public static Set<String> getAllLocales() { return CLDR_FACTORY.getAvailableLanguages(); }
         public static ImmutableSet<GroupingStrategy> getCoreGroupingStrategies() { return CORE_GROUPING_STRATEGIES; }
         public static ImmutableSet<RoundingMode> getCoreRoundingModes() { return CORE_ROUNDING_MODES; }
+        public static ImmutableSet<Precision> getCorePrecisions() { return CORE_PRECISIONS; }
+        public static ImmutableSet<SignDisplay> getCoreSignDisplays() { return CORE_SIGN_DISPLAYS; }
+        public static ImmutableSet<Integer> getCoreMinIntegerDigits() { return CORE_MIN_INTEGER_DIGITS; }
+        public static ImmutableSet<DecimalSeparatorDisplay> getCoreDecimalSeparatorDisplays() { return CORE_DECIMAL_SEPARATOR_DISPLAYS; }
 
         public static Set<GroupingStrategy> getExtendedGroupingStrategies() {
             Set<GroupingStrategy> extended = new TreeSet<>();
@@ -227,6 +286,28 @@ public final class GenerateDecimalFormatTestData {
             extended.add(RoundingMode.CEILING);
             extended.add(RoundingMode.FLOOR);
             return extended;
+        }
+
+        public static Set<Precision> getExtendedPrecisions() {
+            Set<Precision> extended = new TreeSet<>();
+            extended.add(Precision.MIN0);
+            extended.add(Precision.SIG3);
+            return extended;
+        }
+
+        public static Set<SignDisplay> getExtendedSignDisplays() {
+            Set<SignDisplay> extended = new TreeSet<>();
+            extended.add(SignDisplay.NEVER);
+            extended.add(SignDisplay.EXCEPT_ZERO);
+            return extended;
+        }
+
+        public static Set<Integer> getExtendedMinIntegerDigits() {
+            return ImmutableSet.of(3);
+        }
+
+        public static Set<DecimalSeparatorDisplay> getExtendedDecimalSeparatorDisplays() {
+            return ImmutableSet.of(DecimalSeparatorDisplay.ALWAYS);
         }
 
         public static Set<String> getExtendedModernLocales() {
@@ -453,19 +534,19 @@ public final class GenerateCurrencyFormatTestData {
 To demonstrate how the files are structured and split systematically to maintain readability, version control, and keep size below the 10,000-line threshold:
 
 ### 5.1. Decimal Test Suites
-The decimal generator outputs four main files under the `decimal/` directory:
+The decimal generator outputs four main files under the `decimal/` directory. To maintain file readability and keep sizes manageable, if any extended suite file exceeds the 10,000-line threshold, it can be split systematically by style (similar to the currency suites).
 
 1. **`decimals.tsv` (Core Suite)**
-   * **Combinations:** Core Locales ($9$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) = **$1,350$ test cases**.
+   * **Combinations:** Core Locales ($9$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) $\times$ Core Precision ($3$) $\times$ Core Sign Display ($2$) $\times$ Core Min Integer Digits ($1$) $\times$ Core Decimal Separator Display ($1$) = **$8,100$ test cases**.
    * **Purpose:** Highly concentrated, fast-running smoke test covering 90% of code paths.
 2. **`decimals_modern_locales.tsv` (Extended Locales Suite)**
-   * **Combinations:** Extended Locales (~$140$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) = **~$21,000$ test cases**.
+   * **Combinations:** Extended Locales (~$140$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) $\times$ Core Precision ($3$) $\times$ Core Sign Display ($2$) = **~$126,000$ test cases** (can be split by style if needed).
    * **Purpose:** Thorough coverage of locale-specific formatting rules.
 3. **`decimals_extended_values.tsv` (Extended Values Suite)**
-   * **Combinations:** Core Locales ($9$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Extended Values (~$120$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) = **~$32,400$ test cases**.
+   * **Combinations:** Core Locales ($9$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Extended Values (~$120$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) $\times$ Core Precision ($3$) $\times$ Core Sign Display ($2$) = **~$194,400$ test cases** (can be split by style if needed).
    * **Purpose:** Full validation of mathematical scale and rounding behaviors.
 4. **`decimals_extended_number_systems.tsv` (Extended Numbering Systems Suite)**
-   * **Combinations:** Core Locales ($9$) $\times$ Extended NS ($2$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) = **$900$ test cases**.
+   * **Combinations:** Core Locales ($9$) $\times$ Extended NS ($2$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) $\times$ Core Precision ($3$) $\times$ Core Sign Display ($2$) = **$5,400$ test cases**.
    * **Purpose:** Direct testing of digit representation in less common numbering systems.
 
 ### 5.2. Currency Test Suites
