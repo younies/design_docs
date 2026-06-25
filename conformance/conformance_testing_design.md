@@ -253,14 +253,13 @@ This section provides the official Unicode Technical Standard #35 (TR35) specifi
 *   **Why it's a dimension:** Tests custom overrides for fraction and significant digits.
 *   **TR35 Specification:** [TR35 Digit Precision](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns)
 *   **Spec Quote:** *“There are two ways of controlling how many digits are shown: (a) significant digits counts, or (b) integer and fraction digit counts. ... In order to enable significant digits formatting, use a pattern containing the '@' character.”* (Section 3)
-*   **CLDR XML Example (`common/main/en.xml`):**
+*   **CLDR XML Example (`common/main/en.xml` - Fraction Precision):**
     ```xml
     <decimalFormat>
-      <pattern>#,##0.00</pattern> <!-- Forces exactly 2 fraction digits -->
-      <!-- OR for significant digits: -->
-      <pattern>@@@</pattern> <!-- Forces exactly 3 significant digits -->
+      <pattern>#,##0.00</pattern> <!-- Forces exactly 2 fraction digits (Standard CLDR pattern) -->
     </decimalFormat>
     ```
+    *Note: While the UTS #35 specification defines the `@` character to specify significant digits in patterns (e.g., `@@@` for exactly 3 significant digits), standard CLDR XML locale files in the repository do not utilize `@` patterns. Significant digits are supported by the TR35 spec and ICU, and are typically applied programmatically via APIs (e.g., ICU `Precision.significantDigits(3)`).*
 *   **Core Set:** `default` (uses pattern defaults), `min2` (minimum 2 fraction digits), `max2` (maximum 2 fraction digits)
 *   **Extended Set:** `min0` (forces integer representation), `sig3` (forces exactly 3 significant digits)
 *   **Default Value / Behavior if Empty:** `default`
