@@ -94,6 +94,8 @@ This section details the dimensions implemented in the decimal formatting test g
 | `number_format` <br> **Java Name:** `NumberFormat` | Specifies the core format pattern type to apply: standard decimal, percent representation, or scientific notation. | [TR35 Number Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Formats) <br><br> **Why it's a dimension:** Controls the core mathematical representation (standard decimal, percentage scaling, or exponential scientific notation). <br><br> *“Number formats include standard decimal patterns, percent patterns, and scientific notation patterns.”* (Section 3) | `decimal` (Standard decimal)<br>`percent` (Percentage, scaled $\times 100$)<br>`scientific` (Scientific/exponential notation) | *None* (Dimension is fully covered) | `decimal` |
 | `decimal_format_length` <br> **Java Name:** `DecimalFormatLength` | Specifies the format length style, allowing compact representations of numbers (e.g. 1.2K or 1.2 million). | [TR35 Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Number_Formats) <br><br> **Why it's a dimension:** Controls compact scaling (short like "10K" or long like "10 thousand") for space-constrained UIs. <br><br> *“Compact number formats are designed for short, user-friendly representations of large numbers, e.g., '10K' or '10 thousand'.”* (Section 4) | `empty` (Standard formatting, represented as `""`) <br>`short` (Compact short, e.g. 1.2K)<br>`long` (Compact long, e.g. 1.2 thousand) | *None* (Dimension is fully covered) | `empty` (Standard decimal formatting) |
 | `value` <br> **Java Name:** `Value` | The input numeric value (represented as a standard double) to be formatted. | [TR35 Number Format Patterns & Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** The value's magnitude determines the compact format pattern selected and the plural rules applied to compact long names. <br><br> *“The compact pattern selected depends on the magnitude of the value.”* (Section 4) <br> *“Plural rules apply to the compact long formats based on the formatted value.”* (Section 4) | `0.0`, `1.2`, `0.00831765`<br>`1234565.0`, `-1230.05` | Comprehensive mathematical scale:<br>- Powers of 10 ($10^{-6}$ to $10^{12}$)<br>- Multiples ($1.5 \times 10^i$, $5 \times 10^i$)<br>- Edge cases: `12.0`, `123.0`, `1234.56`, `1234567.0`, `0.000123`, `-0.0`, `0.5`, `1.5`, `2.5`, `3.5`, `0.125`, `0.135`, `999.9`, `999999.9`<br>- Negatives of all the above. | *Mandatory* (No default) |
+| `grouping_strategy` <br> **Java Name:** `GroupingStrategy` | Controls the application of digit grouping separators. | [TR35 Grouping](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Controls whether grouping is enabled, disabled, or uses specific strategies like min2 (highly locale-dependent). <br><br> *“The grouping size... is the number of digits between grouping separators. ... The grouping separator is placed according to the grouping size.”* (Section 3) | `auto` (Uses locale default grouping)<br>`off` (Disables grouping entirely) | `min2` (Groups only if 2+ digits in first group)<br>`thousand` (Forces 3-digit grouping) | `auto` |
+| `rounding_mode` <br> **Java Name:** `RoundingMode` | Controls the mathematical rounding algorithm when rounding fractional digits. | [TR35 Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Determines how halfway cases are resolved (e.g., banker's rounding vs. standard round-half-up). <br><br> *“Rounding increments and rounding modes are used to round values to a specific precision.”* (Section 3) | `half-even` (Bankers rounding, rounds to nearest even) | `half-up` (Commercial rounding)<br>`up` (Away from zero)<br>`down` (Toward zero)<br>`ceiling` (Toward +infinity)<br>`floor` (Toward -infinity) | `half-even` |
 
 ### 3.1. Java API Representation
 
@@ -125,6 +127,14 @@ public final class GenerateDecimalFormatTestData {
         // Core subset of test values
         public static final ImmutableSet<Double> CORE_VALUES =
                 ImmutableSet.of(0.0, 1.2, 0.00831765, 1234565.0, -1230.05);
+
+        // Core subset of grouping strategies
+        private static final ImmutableSet<GroupingStrategy> CORE_GROUPING_STRATEGIES =
+                ImmutableSet.of(GroupingStrategy.AUTO, GroupingStrategy.OFF);
+
+        // Core subset of rounding modes
+        private static final ImmutableSet<RoundingMode> CORE_ROUNDING_MODES =
+                ImmutableSet.of(RoundingMode.HALF_EVEN);
 
         // Numbering System dimension
         public enum NumberSystem {
@@ -171,8 +181,53 @@ public final class GenerateDecimalFormatTestData {
             public String getLabel() { return label; }
         }
 
+        // Grouping strategy dimension
+        public enum GroupingStrategy {
+            AUTO("auto"),
+            OFF("off"),
+            MIN2("min2"),
+            THOUSAND("thousand");
+
+            private final String label;
+            GroupingStrategy(String label) { this.label = label; }
+            public String getLabel() { return label; }
+        }
+
+        // Rounding mode dimension
+        public enum RoundingMode {
+            HALF_EVEN("half-even"),
+            HALF_UP("half-up"),
+            UP("up"),
+            DOWN("down"),
+            CEILING("ceiling"),
+            FLOOR("floor");
+
+            private final String label;
+            RoundingMode(String label) { this.label = label; }
+            public String getLabel() { return label; }
+        }
+
         public static ImmutableSet<String> getCoreLocales() { return CORE_LOCALES; }
         public static Set<String> getAllLocales() { return CLDR_FACTORY.getAvailableLanguages(); }
+        public static ImmutableSet<GroupingStrategy> getCoreGroupingStrategies() { return CORE_GROUPING_STRATEGIES; }
+        public static ImmutableSet<RoundingMode> getCoreRoundingModes() { return CORE_ROUNDING_MODES; }
+
+        public static Set<GroupingStrategy> getExtendedGroupingStrategies() {
+            Set<GroupingStrategy> extended = new TreeSet<>();
+            extended.add(GroupingStrategy.MIN2);
+            extended.add(GroupingStrategy.THOUSAND);
+            return extended;
+        }
+
+        public static Set<RoundingMode> getExtendedRoundingModes() {
+            Set<RoundingMode> extended = new TreeSet<>();
+            extended.add(RoundingMode.HALF_UP);
+            extended.add(RoundingMode.UP);
+            extended.add(RoundingMode.DOWN);
+            extended.add(RoundingMode.CEILING);
+            extended.add(RoundingMode.FLOOR);
+            return extended;
+        }
 
         public static Set<String> getExtendedModernLocales() {
             Set<String> modernLocales =
@@ -185,13 +240,11 @@ public final class GenerateDecimalFormatTestData {
 
         public static Set<Double> getExtendedValues() {
             Set<Double> results = new TreeSet<>();
-            // Add powers of 10 and their multiples
             for (int i = -6; i <= 12; i++) {
                 results.add(Math.pow(10, i));
                 results.add(Math.pow(10, i) * 1.5);
                 results.add(Math.pow(10, i) * 5);
             }
-            // Add standard edge cases
             results.addAll(CORE_VALUES);
             results.add(12.0);
             results.add(123.0);
@@ -208,7 +261,6 @@ public final class GenerateDecimalFormatTestData {
             results.add(999.9);
             results.add(999999.9);
 
-            // Add negative counterparts
             Set<Double> negatives = new TreeSet<>();
             for (Double d : results) {
                 if (d > 0) { negatives.add(-d); }
@@ -234,8 +286,11 @@ Currency formatting inherits several dimensions from Decimal formatting, but int
 | `currency` <br> **Java Name:** `Currency` | The ISO 4217 three-letter code of the currency to format. If empty, formats as a standard decimal/accounting number without a currency unit. | [TR35 Currencies](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br><br> **Why it's a dimension:** Formatting depends on the currency itself. Currencies define their own decimal places (e.g., JPY has 0, USD has 2) and rounding increments, which override locale defaults. <br><br> *“The formatting of a currency value can depend on the currency itself. In particular, the supplemental data defines the number of decimal digits and the rounding increment to be used for each currency.”* (Section 5) | `USD` (Standard 2-decimal)<br>`EUR` (Standard 2-decimal, European spacing)<br>`JPY` (0-decimal currency)<br>`RUB` (Cyrillic Ruble, complex plurals)<br>`EGP` (Egyptian Pound, RTL Arabic context)<br>`empty` (Omitted, represented as `""`) | All other active legal-tender ISO 4217 currency codes | `empty` (Omitted) |
 | `currency_format_length` <br> **Java Name:** `CurrencyFormatLength` | Controls the overall formatting length style (standard or compact short). <br> *Note: Compact long is not supported for currency in CLDR.* | [TR35 Compact Currency Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Currency_Formats) <br><br> **Why it's a dimension:** Determines whether standard or compact formatting (scaling numbers and using terms like "K" or "M") is used. This is locale- and currency-dependent. <br><br> *“Compact currency formats... are designed for use in user interfaces where space is limited... They are locale-specific and depend on the currency.”* (Section 5.3) | `standard` (Standard currency formatting)<br>`short` (Compact short currency style: e.g. $1.2K) | *None* (Dimension is fully covered) | `standard` |
 | `currency_format_type` <br> **Java Name:** `CurrencyFormatType` | Controls the formatting style type (standard or accounting with parentheses for negatives). | [TR35 Currency Patterns](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Patterns) <br><br> **Why it's a dimension:** Determines the negative representation style, which is critical for financial reporting. <br><br> *“There are two standard currency patterns: standard and accounting. The accounting pattern is typically used in financial statements to represent negative values with parentheses.”* (Section 5.1) | `standard` (Standard currency formatting)<br>`accounting` (Accounting style: uses parenthesis for negatives) | *None* (Dimension is fully covered) | `standard` |
-| `currency_display` <br> **Java Name:** `CurrencyDisplay` | Controls how the currency unit itself is represented within the formatted string (symbol, narrow symbol, ISO code, or full plural name). | [TR35 Currencies](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br><br> **Why it's a dimension:** Dictates the visual representation of the currency unit (e.g., standard symbol "$", narrow symbol "$", ISO code "USD", or full name "US dollars"). <br><br> *“The currency display name or symbol to use is determined by the choice of currency display... standard symbol, narrow symbol, ISO code, or full plural name.”* (Section 5) | `symbol` (e.g. $1.00)<br>`narrowSymbol` (e.g. narrow variant)<br>`code` (ISO code, e.g. USD 1.00)<br>`name` (Plural name, e.g. 1.00 US dollar) | *None* (Dimension is fully covered) | `symbol` |
+| `currency_display` <br> **Java Name:** `CurrencyDisplay` | Controls how the currency unit itself is represented within the formatted string (symbol, narrow symbol, ISO code, or full plural name). | [TR35 Currencies & Symbols](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br><br> **Why it's a dimension:** Dictates the visual representation of the currency unit (e.g., standard symbol "$", narrow symbol "$", ISO code "USD", or full name "US dollars"). <br><br> *“The currency display name or symbol to use is determined by the choice of currency display... standard symbol, narrow symbol, ISO code, or full plural name.”* (Section 5) | `symbol` (e.g. $1.00)<br>`narrowSymbol` (e.g. narrow variant)<br>`code` (ISO code, e.g. USD 1.00)<br>`name` (Plural name, e.g. 1.00 US dollar) | *None* (Dimension is fully covered) | `symbol` |
 | `input` <br> **Java Name:** `Number` | The input numeric currency amount (represented as a standard double) to be formatted. | [TR35 Currency Patterns & Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Patterns) <br><br> **Why it's a dimension:** The value's magnitude determines plural rules for currency names and thresholds for compact formatting scale transitions. <br><br> *“When the currency display name is used, the plural form of the name is determined by the numeric value...”* (Section 5.1) <br> *“The compact pattern selected depends on the magnitude of the value.”* (Section 5.3) | `0.0`, `1.2`, `0.00831765`<br>`1234565.0`, `-1230.05` | Comprehensive mathematical scale:<br>- Powers of 10 ($10^{-6}$ to $10^{12}$)<br>- Multiples ($1.5 \times 10^i$, $5 \times 10^i$)<br>- Edge cases: `12.0`, `123.0`, `1234.56`, `1234567.0`, `0.000123`, `-0.0`, `0.5`, `1.5`, `2.5`, `3.5`, `0.125`, `0.135`, `999.9`, `999999.9`<br>- Negatives of all the above. | *Mandatory* (No default) |
+| `currency_usage` <br> **Java Name:** `CurrencyUsage` | Specifies the transaction usage context, determining if standard electronic rounding or cash rounding rules apply. | [TR35 Currencies (Cash Rounding)](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br><br> **Why it's a dimension:** Accounts for cash rounding rules (e.g., CHF or CAD rounding to the nearest 0.05) which often differ from electronic/standard rounding due to the absence of physical 1-cent coins. <br><br> *“There are also separate values for cash transactions, where the rounding rules may be different from the standard rules. In the supplemental currency data, these have the choice of usage="cash".”* (Section 5) | `standard` (Standard electronic rounding)<br>`cash` (Cash rounding based on circulating coins) | *None* (Dimension is fully covered) | `standard` |
+| `grouping_strategy` <br> **Java Name:** `GroupingStrategy` | Controls the application of digit grouping separators. | [TR35 Grouping](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Controls whether grouping is enabled, disabled, or uses specific strategies like min2 (highly locale-dependent). <br><br> *“The grouping size... is the number of digits between grouping separators. ... The grouping separator is placed according to the grouping size.”* (Section 3) | `auto` (Uses locale default grouping)<br>`off` (Disables grouping entirely) | `min2` (Groups only if 2+ digits in first group)<br>`thousand` (Forces 3-digit grouping) | `auto` |
+| `rounding_mode` <br> **Java Name:** `RoundingMode` | Controls the mathematical rounding algorithm when rounding fractional digits. | [TR35 Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Determines how halfway cases are resolved (e.g., banker's rounding vs. standard round-half-up). <br><br> *“Rounding increments and rounding modes are used to round values to a specific precision.”* (Section 3) | `half-even` (Bankers rounding, rounds to nearest even) | `half-up` (Commercial rounding)<br>`up` (Away from zero)<br>`down` (Toward zero)<br>`ceiling` (Toward +infinity)<br>`floor` (Toward -infinity) | `half-even` |
 
 ### 4.1. Java API Representation
 
@@ -271,8 +326,23 @@ public final class GenerateCurrencyFormatTestData {
         private static final ImmutableSet<String> CORE_CURRENCIES =
                 ImmutableSet.of("USD", "EUR", "JPY", "RUB", "EGP", "");
 
+        // Core subset of currency usages
+        private static final ImmutableSet<CurrencyUsage> CORE_CURRENCY_USAGES =
+                ImmutableSet.copyOf(CurrencyUsage.values());
+
+        // Core subset of grouping strategies
+        private static final ImmutableSet<GroupingStrategy> CORE_GROUPING_STRATEGIES =
+                ImmutableSet.of(GroupingStrategy.AUTO, GroupingStrategy.OFF);
+
+        // Core subset of rounding modes
+        private static final ImmutableSet<RoundingMode> CORE_ROUNDING_MODES =
+                ImmutableSet.of(RoundingMode.HALF_EVEN);
+
         public static ImmutableSet<String> getCoreLocales() { return CORE_LOCALES; }
         public static ImmutableSet<String> getCoreCurrencies() { return CORE_CURRENCIES; }
+        public static ImmutableSet<CurrencyUsage> getCoreCurrencyUsages() { return CORE_CURRENCY_USAGES; }
+        public static ImmutableSet<GroupingStrategy> getCoreGroupingStrategies() { return CORE_GROUPING_STRATEGIES; }
+        public static ImmutableSet<RoundingMode> getCoreRoundingModes() { return CORE_ROUNDING_MODES; }
 
         public static Set<String> getExtendedModernLocales() {
             Set<String> modernLocales =
@@ -386,32 +456,32 @@ To demonstrate how the files are structured and split systematically to maintain
 The decimal generator outputs four main files under the `decimal/` directory:
 
 1. **`decimals.tsv` (Core Suite)**
-   * **Combinations:** Core Locales ($9$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) = **$675$ test cases**.
+   * **Combinations:** Core Locales ($9$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) = **$1,350$ test cases**.
    * **Purpose:** Highly concentrated, fast-running smoke test covering 90% of code paths.
 2. **`decimals_modern_locales.tsv` (Extended Locales Suite)**
-   * **Combinations:** Extended Locales (~$140$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) = **~$10,500$ test cases**.
+   * **Combinations:** Extended Locales (~$140$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) = **~$21,000$ test cases**.
    * **Purpose:** Thorough coverage of locale-specific formatting rules.
 3. **`decimals_extended_values.tsv` (Extended Values Suite)**
-   * **Combinations:** Core Locales ($9$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Extended Values (~$120$) = **~$16,200$ test cases**.
+   * **Combinations:** Core Locales ($9$) $\times$ Core NS ($3$) $\times$ All Styles ($5$) $\times$ Extended Values (~$120$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) = **~$32,400$ test cases**.
    * **Purpose:** Full validation of mathematical scale and rounding behaviors.
 4. **`decimals_extended_number_systems.tsv` (Extended Numbering Systems Suite)**
-   * **Combinations:** Core Locales ($9$) $\times$ Extended NS ($2$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) = **$450$ test cases**.
+   * **Combinations:** Core Locales ($9$) $\times$ Extended NS ($2$) $\times$ All Styles ($5$) $\times$ Core Values ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) = **$900$ test cases**.
    * **Purpose:** Direct testing of digit representation in less common numbering systems.
 
 ### 5.2. Currency Test Suites
-The currency generator outputs a structured set of files under the `currency/` directory. Due to the extra dimensions (Currencies), the extended suites are split systematically by style (combinations of `CurrencyDisplay`, `CurrencyFormatLength`, and `CurrencyFormatType`) to maintain file readability.
+The currency generator outputs a structured set of files under the `currency/` directory. Due to the extra dimensions (Currencies and Usage), the extended suites are split systematically by style (combinations of `CurrencyDisplay`, `CurrencyFormatLength`, and `CurrencyFormatType`) to maintain file readability.
 
 There are **12 distinct styles** (4 display types $\times$ 3 valid length/type pairs). The files for extended suites are split by style, using a suffix format: `_{display}[_{type}][_{length}]` (where default `standard` values are omitted from the filename, e.g., `_symbol`, `_symbol_accounting`, or `_symbol_short`).
 
 1. **`currencies.tsv` (Core Suite)**
-   * **Combinations:** Core Locales ($9$) $\times$ Core Currencies ($6$) $\times$ All Styles ($12$) $\times$ Core Numbers ($5$) = **$3,240$ test cases**.
+   * **Combinations:** Core Locales ($9$) $\times$ Core Currencies ($6$) $\times$ Core Usages ($2$) $\times$ All Styles ($12$) $\times$ Core Numbers ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) = **$12,960$ test cases**.
    * **Purpose:** Core validation of major currency formats.
 2. **Extended Modern Currencies (`currencies_{style_suffix}_modern_currencies.tsv`)**
-   * **Combinations:** Core Locales ($9$) $\times$ Extended Currencies (~$150$) $\times$ Single Style ($1$) $\times$ Core Numbers ($5$) = **~$6,750$ test cases per file**.
+   * **Combinations:** Core Locales ($9$) $\times$ Core Usages ($2$) $\times$ Extended Currencies (~$150$) $\times$ Single Style ($1$) $\times$ Core Numbers ($5$) = **~$13,500$ test cases per file**.
    * **Split:** A file is written for each of the $12$ styles (e.g., `currencies_symbol_accounting_modern_currencies.tsv`).
 3. **Extended Modern Locales (`currencies_{style_suffix}_modern_locales.tsv`)**
-   * **Combinations:** Extended Locales (~$140$) $\times$ Core Currencies ($6$) $\times$ Single Style ($1$) $\times$ Core Numbers ($5$) = **~$4,200$ test cases per file**.
+   * **Combinations:** Extended Locales (~$140$) $\times$ Core Usages ($2$) $\times$ Core Currencies ($6$) $\times$ Single Style ($1$) $\times$ Core Numbers ($5$) = **~$8,400$ test cases per file**.
    * **Split:** A file is written for each of the $12$ styles.
 4. **Extended Numbers (`currencies_{style_suffix}_extended_numbers.tsv`)**
-   * **Combinations:** Core Locales ($9$) $\times$ Core Currencies ($6$) $\times$ Single Style ($1$) $\times$ Extended Numbers (~$120$) = **~$6,480$ test cases per file**.
+   * **Combinations:** Core Locales ($9$) $\times$ Core Usages ($2$) $\times$ Core Currencies ($6$) $\times$ Single Style ($1$) $\times$ Extended Numbers (~$120$) = **~$12,960$ test cases per file**.
    * **Split:** A file is written for each of the $12$ styles.
