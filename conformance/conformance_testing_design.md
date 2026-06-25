@@ -79,7 +79,7 @@ The `Combinator` is responsible for taking all defined dimensions and orchestrat
 5. **Extended Currencies Suite (Currency only - `*_mod_cur.tsv`):**
    Pairs the **Extended Modern Currencies** set with the Core Locales, Core Numbering Systems, and Core styles to verify rare currency symbol rendering, ISO codes, and custom decimal rules.
 6. **Deduplication:** Extended sets strictly exclude values already present in the core sets to prevent redundant test cases.
-7. **Hybrid Consolidation/Splitting:** Thanks to the Tiny Core Sets optimization, the total test cases are extremely compact. To strictly enforce the **10,000-line maximum file size limit** while keeping directory clutter low, the generator employs a hybrid strategy: the Extended Locales suite (`mod_loc.tsv`, ~5.7K lines) and Core suite (`core.tsv`, ~4K lines) remain consolidated, while the Extended Currencies suite (~13.3K cases total) and Extended Numbers suite (~12.6K cases total) are split by `CurrencyDisplay` into 5 files each (resulting in files of ~2.6K and ~2.5K lines respectively).
+7. **Hybrid Consolidation/Splitting:** Thanks to the Tiny Core Sets optimization, the total test cases are extremely compact. To strictly enforce the **10,000-line maximum file size limit** while keeping directory clutter low, the generator employs a hybrid strategy (producing exactly 10 files total): the Extended Locales suite (`mod_loc.tsv`, ~4.6K lines) and Core suite (`core.tsv`, ~4K lines) remain consolidated, while the Extended Currencies suite (~10.6K cases total, excluding redundant `noCurrency`) and Extended Numbers suite (~10K cases total, excluding `noCurrency`) are split by `CurrencyDisplay` into 4 files each (resulting in files of ~2.6K and ~2.5K lines respectively).
 
 ### 2.3. Combinatorial Optimization (Tiny Core Sets)
 
@@ -108,19 +108,19 @@ Instead of pairing the active Extended dimension with the *full* Core Sets of ot
     *   *Rationale:* Covers standard fractional vs. integer-only currency rounding and formatting rules.
 
 #### Optimized Consolidated Strategy
-When generating an **Extended Suite** for a target dimension, the generator loops over the target's extended values, but restricts all other dimensions to their **Tiny Core Sets**. To strictly respect the **10,000-line maximum file size limit**, files that would exceed this limit are split by `CurrencyDisplay` (5 styles) into separate files, while smaller suites remain consolidated:
+When generating an **Extended Suite** for a target dimension, the generator loops over the target's extended values, but restricts all other dimensions to their **Tiny Core Sets**. To strictly respect the **10,000-line maximum file size limit** and remove massive redundancy, the `NO_CURRENCY` display style (which hides the symbol, making ~95% of currencies format identically) is **excluded from all Extended Suites**. Large suites are split by `CurrencyDisplay` (4 active styles) into separate files, while smaller suites remain consolidated:
 
-*   **Extended Currencies Suite (`[display]_mod_cur.tsv`):** Pairs Extended Currencies (148) with `TINY_LOCALES` (3) and `TINY_VALUES` (2) across all 3 valid Style Pairs, **split by `CurrencyDisplay` (5 styles)** to strictly respect the 10,000-line limit.
-    *   This produces **5 separate files** (e.g., `symbol_mod_cur.tsv`, `narrow_mod_cur.tsv`, etc.).
-    *   Each file contains: `148 Currencies * 3 Locales * 2 Values * 3 Styles = 2,664 cases (~2.6K lines)`.
-    *   **Status: All files are strictly under the 10,000-line limit (a 90.1% overall footprint reduction from 135,000).**
-*   **Extended Locales Suite (`mod_loc.tsv`):** Pairs Extended Locales (96) with `TINY_CURRENCIES` (2) and `TINY_VALUES` (2) across all 15 valid Styles. Since it is already well under 10,000 lines, it remains consolidated as a single file.
-    $$\text{Consolidated Cases} = 96\text{ Locales} \times 2\text{ Currencies} \times 2\text{ Values} \times 15\text{ Styles} = 5,760\text{ cases (~5.7K lines)}$$
+*   **Extended Currencies Suite (`[display]_mod_cur.tsv`):** Pairs Extended Currencies (148) with `TINY_LOCALES` (3) and `TINY_VALUES` (2) across all 3 valid Style Pairs, **split by `CurrencyDisplay` (4 active styles, excluding redundant `noCurrency`)** to strictly respect the 10,000-line limit.
+    *   This produces **4 separate files** (`symbol_mod_cur.tsv`, `narrow_mod_cur.tsv`, `code_mod_cur.tsv`, `name_mod_cur.tsv`).
+    *   Each file contains: `148 Currencies * 3 Locales * 2 Values * 3 Styles = 2,664 cases (+1 header line = 2,665 lines)`.
+    *   **Status: All 4 files are strictly under the 10,000-line limit (representing a 90.1% overall footprint reduction from 135,000).**
+*   **Extended Locales Suite (`mod_loc.tsv`):** Pairs Extended Locales (96) with `TINY_CURRENCIES` (2) and `TINY_VALUES` (2) across all 12 valid Styles (excluding `NO_CURRENCY`). Since it is already well under 10,000 lines, it remains consolidated as a single file.
+    $$\text{Consolidated Cases} = 96\text{ Locales} \times 2\text{ Currencies} \times 2\text{ Values} \times 12\text{ Styles} = 5,760\text{ cases (+1 header line = 5,761 lines)}$$
     *   **Status: Strictly under the 10,000-line limit.**
-*   **Extended Numbers Suite (`[display]_ext_num.tsv`):** Pairs Extended Numbers (140) with `TINY_LOCALES` (3) and `TINY_CURRENCIES` (2) across all 3 valid Style Pairs, **split by `CurrencyDisplay` (5 styles)** to strictly respect the 10,000-line limit.
-    *   This produces **5 separate files** (e.g., `symbol_ext_num.tsv`, `narrow_ext_num.tsv`, etc.).
-    *   Each file contains: `140 Numbers * 3 Locales * 2 Currencies * 3 Styles = 2,520 cases (~2.5K lines)`.
-    *   **Status: All files are strictly under the 10,000-line limit.**
+*   **Extended Numbers Suite (`[display]_ext_num.tsv`):** Pairs Extended Numbers (140) with `TINY_LOCALES` (3) and `TINY_CURRENCIES` (2) across all 3 valid Style Pairs, **split by `CurrencyDisplay` (4 active styles, excluding `noCurrency`)** to strictly respect the 10,000-line limit.
+    *   This produces **4 separate files** (`symbol_ext_num.tsv`, `narrow_ext_num.tsv`, `code_ext_num.tsv`, `name_ext_num.tsv`).
+    *   Each file contains: `140 Numbers * 3 Locales * 2 Currencies * 3 Styles = 2,520 cases (+1 header line = 2,521 lines)`.
+    *   **Status: All 4 files are strictly under the 10,000-line limit.**
 
 This optimization dramatically reduces the test suite footprint and execution time while ensuring that every extended value is still rigorously verified across all formatting styles and in key representative environments.
 
