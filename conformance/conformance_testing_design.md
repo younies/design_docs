@@ -79,7 +79,7 @@ The `Combinator` is responsible for taking all defined dimensions and orchestrat
 5. **Extended Currencies Suite (Currency only - `*_mod_cur.tsv`):**
    Pairs the **Extended Modern Currencies** set with the Core Locales, Core Numbering Systems, and Core styles to verify rare currency symbol rendering, ISO codes, and custom decimal rules.
 6. **Deduplication:** Extended sets strictly exclude values already present in the core sets to prevent redundant test cases.
-7. **File Size Management:** To keep files manageable for version control and test runners, the currency extended suites are split by formatting style and representation (e.g., splitting into `symbol_acc_mod_cur.tsv`, etc.) ensuring no single file exceeds comfortable reading limits (max 10,000 lines).
+7. **Consolidated Files:** Thanks to the Tiny Core Sets optimization, the total test cases for each extended suite (covering all 15 valid formatting styles/displays) are extremely compact (all under 10,000 lines). Therefore, instead of splitting them, the generator consolidates each extended dimension into a single, highly readable file (e.g., `mod_cur.tsv` for all currencies, `mod_loc.tsv` for all locales, and `ext_num.tsv` for all numbers) placed under `currency/`.
 
 ### 2.3. Combinatorial Optimization (Tiny Core Sets)
 
@@ -107,17 +107,17 @@ Instead of pairing the active Extended dimension with the *full* Core Sets of ot
     *   `JPY` (0-decimal currency, triggers integer-only formatting and rounding)
     *   *Rationale:* Covers standard fractional vs. integer-only currency rounding and formatting rules.
 
-#### Optimized Combination Strategy
-When generating an **Extended Suite** for a target dimension, the generator loops over the target's extended values, but restricts all other dimensions to their **Tiny Core Sets** (and locks non-relevant dimensions to a single default value):
+#### Optimized Consolidated Strategy
+When generating an **Extended Suite** for a target dimension, the generator loops over the target's extended values, but restricts all other dimensions to their **Tiny Core Sets**, while testing **all 15 valid combinations of format length, type, and display (Styles)** in a single consolidated file:
 
-*   **Extended Currencies Suite:** Pairs Extended Currencies with `TINY_LOCALES` and `TINY_VALUES` (locked to standard format type, symbol display, and auto grouping).
-    $$\text{Optimized Cases} = 150\text{ Currencies} \times 3\text{ Locales} \times 2\text{ Values} = 900\text{ cases per file (99.3\% reduction)}$$
-*   **Extended Locales Suite:** Pairs Extended Locales with `TINY_CURRENCIES` and `TINY_VALUES`.
-    $$\text{Optimized Cases} = 100\text{ Locales} \times 2\text{ Currencies} \times 2\text{ Values} = 400\text{ cases per file}$$
-*   **Extended Numbers Suite:** Pairs Extended Numbers with `TINY_LOCALES` and `TINY_CURRENCIES`.
-    $$\text{Optimized Cases} = 110\text{ Numbers} \times 3\text{ Locales} \times 2\text{ Currencies} = 660\text{ cases per file}$$
+*   **Extended Currencies Suite (`mod_cur.tsv`):** Pairs Extended Currencies (150) with `TINY_LOCALES` (3) and `TINY_VALUES` (2) across all 15 valid Styles.
+    $$\text{Consolidated Cases} = 150\text{ Currencies} \times 3\text{ Locales} \times 2\text{ Values} \times 15\text{ Styles} = 9,000\text{ cases (93.3\% reduction from original 135,000)}$$
+*   **Extended Locales Suite (`mod_loc.tsv`):** Pairs Extended Locales (100) with `TINY_CURRENCIES` (2) and `TINY_VALUES` (2) across all 15 valid Styles.
+    $$\text{Consolidated Cases} = 100\text{ Locales} \times 2\text{ Currencies} \times 2\text{ Values} \times 15\text{ Styles} = 6,000\text{ cases}$$
+*   **Extended Numbers Suite (`ext_num.tsv`):** Pairs Extended Numbers (110) with `TINY_LOCALES` (3) and `TINY_CURRENCIES` (2) across all 15 valid Styles.
+    $$\text{Consolidated Cases} = 110\text{ Numbers} \times 3\text{ Locales} \times 2\text{ Currencies} \times 15\text{ Styles} = 9,900\text{ cases}$$
 
-This optimization dramatically reduces the test suite footprint and execution time while ensuring that every extended value is still rigorously verified in key representative environments.
+This optimization dramatically reduces the test suite footprint and execution time while ensuring that every extended value is still rigorously verified across all formatting styles and in key representative environments.
 
 ---
 
