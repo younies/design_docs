@@ -110,12 +110,14 @@ Instead of pairing the active Extended dimension with the *full* Core Sets of ot
 #### Optimized Consolidated Strategy
 When generating an **Extended Suite** for a target dimension, the generator loops over the target's extended values, but restricts all other dimensions to their **Tiny Core Sets**, while testing **all 15 valid combinations of format length, type, and display (Styles)** in a single consolidated file:
 
-*   **Extended Currencies Suite (`mod_cur.tsv`):** Pairs Extended Currencies (150) with `TINY_LOCALES` (3) and `TINY_VALUES` (2) across all 15 valid Styles.
-    $$\text{Consolidated Cases} = 150\text{ Currencies} \times 3\text{ Locales} \times 2\text{ Values} \times 15\text{ Styles} = 9,000\text{ cases (93.3\% reduction from original 135,000)}$$
-*   **Extended Locales Suite (`mod_loc.tsv`):** Pairs Extended Locales (100) with `TINY_CURRENCIES` (2) and `TINY_VALUES` (2) across all 15 valid Styles.
-    $$\text{Consolidated Cases} = 100\text{ Locales} \times 2\text{ Currencies} \times 2\text{ Values} \times 15\text{ Styles} = 6,000\text{ cases}$$
-*   **Extended Numbers Suite (`ext_num.tsv`):** Pairs Extended Numbers (110) with `TINY_LOCALES` (3) and `TINY_CURRENCIES` (2) across all 15 valid Styles.
-    $$\text{Consolidated Cases} = 110\text{ Numbers} \times 3\text{ Locales} \times 2\text{ Currencies} \times 15\text{ Styles} = 9,900\text{ cases}$$
+*   **Extended Currencies Suite (`mod_cur.tsv`):** Pairs Extended Currencies (148) with `TINY_LOCALES` (3) and `TINY_VALUES` (2) across all 15 valid Styles.
+    $$\text{Consolidated Cases} = 148\text{ Currencies} \times 3\text{ Locales} \times 2\text{ Values} \times 15\text{ Styles} = 13,320\text{ cases (~13.3K lines)}$$
+    *Note: While this slightly exceeds our 10,000-line soft limit, it is kept consolidated to minimize directory clutter and runner complexity, representing a **90.1% reduction** from the original 135,000 combinatorial space.*
+*   **Extended Locales Suite (`mod_loc.tsv`):** Pairs Extended Locales (96) with `TINY_CURRENCIES` (2) and `TINY_VALUES` (2) across all 15 valid Styles.
+    $$\text{Consolidated Cases} = 96\text{ Locales} \times 2\text{ Currencies} \times 2\text{ Values} \times 15\text{ Styles} = 5,760\text{ cases (~5.7K lines)}$$
+*   **Extended Numbers Suite (`ext_num.tsv`):** Pairs Extended Numbers (140) with `TINY_LOCALES` (3) and `TINY_CURRENCIES` (2) across all 15 valid Styles.
+    $$\text{Consolidated Cases} = 140\text{ Numbers} \times 3\text{ Locales} \times 2\text{ Currencies} \times 15\text{ Styles} = 12,600\text{ cases (~12.6K lines)}$$
+    *Note: Slightly exceeds the 10,000-line soft limit but is kept consolidated for structural simplicity.*
 
 This optimization dramatically reduces the test suite footprint and execution time while ensuring that every extended value is still rigorously verified across all formatting styles and in key representative environments.
 
