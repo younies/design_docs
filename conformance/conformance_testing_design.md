@@ -89,17 +89,127 @@ This section details the dimensions implemented in the decimal formatting test g
 
 | Dimension Column | Explanation | TR35 Spec Reference (Link & Snippet) | Core Set | Extended Set | Default Value / Behavior if Empty |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `locale` <br> **Java Name:** `Locale` | The locale identifier determines the linguistic and regional formatting rules (e.g., decimal separator, grouping separator, digit symbols). | [UTS #35 Locale & Numbers](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Symbols) <br><br> **Why it's a dimension:** Number formatting is highly locale-dependent. <br><br> *“Number symbols define the localized symbols that are commonly used when formatting numbers in a given locale.”* (Section 2) <br><br> **CLDR Source Files:** <br> - `common/main/en.xml` (English) <br> - `common/main/ar.xml` (Arabic) <br> - `common/main/de.xml` (German) | `ar` (Arabic RTL, Latin digits)<br>`ar_EG` (Arabic Egypt, Eastern Arabic digits)<br>`bn` (Bengali LTR, Bengali digits, Indian grouping)<br>`de` (German, comma/dot separators)<br>`de_CH` (German Swiss, apostrophe separator)<br>`en` (English LTR, dot/comma separators)<br>`ja` (Japanese, 4-digit grouping)<br>`pt_PT` (Portuguese, space separator)<br>`ru` (Russian, Cyrillic script, complex plurals) | All other modern CLDR locales | `en` |
-| `number_system` <br> **Java Name:** `NumberSystem` | Defines the digit set and numeric rules (e.g. Latin digits, Arabic-Indic digits, or Devanagari digits). | [TR35 Numbering Systems](https://www.unicode.org/reports/tr35/tr35-numbers.html#Numbering_Systems) <br><br> **Why it's a dimension:** Determines the digit set used to represent the number. <br><br> *“Numbering systems information is used to define different representations for numeric values to an end user. ... Numeric systems are simply a decimal based system that uses a predefined set of digits to represent numbers.”* (Section 1) <br><br> **XML Example (`common/main/ar.xml`):** <br> <pre><code class="language-xml">&lt;defaultNumberingSystem&gt;arab&lt;/defaultNumberingSystem&gt;</code></pre> | `empty` (Uses locale default digits) <br>`latn` (Latin digits: 0-9)<br>`arab` (Eastern Arabic-Indic digits: ٠-٩) | `deva` (Devanagari digits)<br>`beng` (Bengali digits) | `empty` (Resolves to locale's default numbering system) |
-| `number_format` <br> **Java Name:** `NumberFormat` | Specifies the core format pattern type to apply: standard decimal, percent representation, or scientific notation. | [TR35 Number Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Formats) <br><br> **Why it's a dimension:** Controls the core mathematical representation. <br><br> *“Number formats are used to define the rules for formatting numeric quantities... Different formats are provided for different contexts, as follows: decimalFormats... percentFormats... scientificFormats...”* (Section 2) <br><br> **XML Example (`common/main/en.xml`):** <br> <pre><code class="language-xml">&lt;decimalFormatLength&gt;<br>  &lt;decimalFormat&gt;<br>    &lt;pattern&gt;#,##0.###&lt;/pattern&gt;<br>  &lt;/decimalFormat&gt;<br>&lt;/decimalFormatLength&gt;</code></pre> | `decimal` (Standard decimal)<br>`percent` (Percentage, scaled $\times 100$)<br>`scientific` (Scientific/exponential notation) | *None* (Dimension is fully covered) | `decimal` |
-| `decimal_format_length` <br> **Java Name:** `DecimalFormatLength` | Specifies the format length style, allowing compact representations of numbers (e.g. 1.2K or 1.2 million). | [TR35 Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Number_Formats) <br><br> **Why it's a dimension:** Controls compact scaling (short vs. long) for space-constrained UIs. <br><br> *“A pattern type attribute is used for compact number formats... The short non-currency format is designed for UI environments where space is at a premium...”* (Section 2) <br><br> **XML Example (`common/main/en.xml`):** <br> <pre><code class="language-xml">&lt;decimalFormatLength type="short"&gt;</code></pre> | `empty` (Standard formatting, represented as `""`) <br>`short` (Compact short, e.g. 1.2K)<br>`long` (Compact long, e.g. 1.2 thousand) | *None* (Dimension is fully covered) | `empty` (Standard decimal formatting) |
-| `value` <br> **Java Name:** `Value` | The input numeric value (represented as a standard double) to be formatted. | [TR35 Number Format Patterns & Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Value magnitude determines the compact pattern and plural rules applied. <br><br> *“To format a... unit type for a particular numeric value, determine the count value according to the plural rules for the language, then select the appropriate display form...”* (Section 5) <br><br> **XML Example (`common/main/en.xml`):** <br> <pre><code class="language-xml">&lt;pattern type="1000" count="one"&gt;0K&lt;/pattern&gt;</code></pre> | `0.0`, `1.2`, `0.00831765`<br>`1234565.0`, `-1230.05` | Comprehensive mathematical scale:<br>- Powers of 10 ($10^{-6}$ to $10^{12}$)<br>- Multiples ($1.5 \times 10^i$, $5 \times 10^i$)<br>- Edge cases: `12.0`, `123.0`, `1234.56`, `1234567.0`, `0.000123`, `-0.0`, `0.5`, `1.5`, `2.5`, `3.5`, `0.125`, `0.135`, `999.9`, `999999.9`<br>- Negatives of all the above. | *Mandatory* (No default) |
-| `grouping_strategy` <br> **Java Name:** `GroupingStrategy` | Controls the application of digit grouping separators. | [TR35 Grouping](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Controls whether grouping is enabled, disabled, or uses specific thresholds. <br><br> *“The grouping separator is a character that separates clusters of integer digits... The grouping size is the number of digits between the grouping separators...”* (Section 3) <br><br> **XML Example (`common/main/en.xml`):** <br> <pre><code class="language-xml">&lt;pattern&gt;#,##0.###&lt;/pattern&gt; <!-- Grouping size 3 --><br>&lt;minimumGroupingDigits&gt;2&lt;/minimumGroupingDigits&gt;</code></pre> | `auto` (Uses locale default grouping)<br>`off` (Disables grouping entirely) | `min2` (Groups only if 2+ digits in first group)<br>`thousand` (Forces 3-digit grouping) | `auto` |
-| `rounding_mode` <br> **Java Name:** `RoundingMode` | Controls the mathematical rounding algorithm when rounding fractional digits. | [TR35 Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Determines how halfway cases are resolved. <br><br> *“An implementation may allow the specification of a rounding mode to determine how values are rounded. In the absence of such choices, the default is to round 'half-even'...”* (Section 3) <br><br> *Note: Rounding mode is API-driven and not defined in CLDR XML.* | `half-even` (Bankers rounding, rounds to nearest even) | `half-up` (Commercial rounding)<br>`up` (Away from zero)<br>`down` (Toward zero)<br>`ceiling` (Toward +infinity)<br>`floor` (Toward -infinity) | `half-even` |
-| `precision` <br> **Java Name:** `Precision` | Overrides the default fractional or significant digit precision. | [TR35 Digit Precision](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Tests custom overrides for fraction and significant digits. <br><br> *“There are two ways of controlling how many digits are shown: (a) significant digits counts, or (b) integer and fraction digit counts. ... In order to enable significant digits formatting, use a pattern containing the '@' character.”* (Section 3) <br><br> **XML Example:** <br> <pre><code class="language-xml">&lt;pattern&gt;#,##0.00&lt;/pattern&gt; <!-- 2 decimals --><br>&lt;pattern&gt;@@@&lt;/pattern&gt; <!-- 3 sig digits --></code></pre> | `default` (Uses pattern defaults)<br>`min2` (Minimum 2 fraction digits, pads with zeros)<br>`max2` (Maximum 2 fraction digits, rounds value) | `min0` (Forces integer representation)<br>`sig3` (Limits to 3 significant digits) | `default` |
-| `sign_display` <br> **Java Name:** `SignDisplay` | Controls when the positive or negative sign is displayed. | [TR35 Sign Display](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Tests rendering of positive and negative signs. <br><br> *“either the positive and negative prefixes or the suffixes must be distinct for any parser using this data to be able to distinguish positive from negative values.”* (Section 3) <br><br> **XML Example (Subpatterns separated by `;`):** <br> <pre><code class="language-xml">&lt;pattern&gt;+#,##0.00;-#,##0.00&lt;/pattern&gt;</code></pre> | `auto` (Shows sign for negatives only)<br>`always` (Always shows sign) | `never` (Hides sign entirely)<br>`except_zero` (Shows sign for non-zero values) | `auto` |
-| `min_integer_digits` <br> **Java Name:** `MinIntegerDigits` | Controls the minimum number of digits displayed to the left of the decimal separator, padding with leading zeros if necessary. | [TR35 Integer Padding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Tests padding of numbers with leading zeros. <br><br> *“A '0' indicates zero-padding: if the number is too short, a zero (in the locale's numeric set) will go there. A '#' indicates no padding...”* (Section 3) <br><br> **XML Example (Padding to 3 digits):** <br> <pre><code class="language-xml">&lt;pattern&gt;000.##&lt;/pattern&gt;</code></pre> | `1` (Default, no padding) | `3` (Pads to 3 digits, e.g., `005`) | `1` |
-| `decimal_separator_display` <br> **Java Name:** `DecimalSeparatorDisplay` | Controls whether the decimal separator is shown when the fractional part is empty. | [TR35 Decimal Separator](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Tests forcing of the decimal separator. <br><br> *“The '.' shows where the decimal point should go. ... Notice how the pattern characters ',' and '.' are replaced by the characters appropriate for the locale.”* (Section 3) <br><br> **XML Example (Forced decimal separator):** <br> <pre><code class="language-xml">&lt;pattern&gt;#,##0.&lt;/pattern&gt;</code></pre> | `auto` (Hides separator if no fraction)<br>`always` (Always shows decimal separator) | `always` | `auto` |
+| `locale`| Dimension Column | Explanation | Core Set | Extended Set | Default Value / Behavior if Empty |
+| :--- | :--- | :--- | :--- | :--- |
+| `locale` <br> **Java Name:** `Locale` | The locale identifier determines the linguistic and regional formatting rules (e.g., decimal separator, grouping separator, digit symbols). | `ar` (Arabic RTL, Latin digits)<br>`ar_EG` (Arabic Egypt, Eastern Arabic digits)<br>`bn` (Bengali LTR, Bengali digits, Indian grouping)<br>`de` (German, comma/dot separators)<br>`de_CH` (German Swiss, apostrophe separator)<br>`en` (English LTR, dot/comma separators)<br>`ja` (Japanese, 4-digit grouping)<br>`pt_PT` (Portuguese, space separator)<br>`ru` (Russian, Cyrillic script, complex plurals) | All other modern CLDR locales | `en` |
+| `number_system` <br> **Java Name:** `NumberSystem` | Defines the digit set and numeric rules (e.g. Latin digits, Arabic-Indic digits, or Devanagari digits). | `empty` (Uses locale default digits) <br>`latn` (Latin digits: 0-9)<br>`arab` (Eastern Arabic-Indic digits: ٠-٩) | `deva` (Devanagari digits)<br>`beng` (Bengali digits) | `empty` (Resolves to locale's default numbering system) |
+| `number_format` <br> **Java Name:** `NumberFormat` | Specifies the core format pattern type to apply: standard decimal, percent representation, or scientific notation. | `decimal` (Standard decimal)<br>`percent` (Percentage, scaled $\times 100$)<br>`scientific` (Scientific/exponential notation) | *None* (Dimension is fully covered) | `decimal` |
+| `decimal_format_length` <br> **Java Name:** `DecimalFormatLength` | Specifies the format length style, allowing compact representations of numbers (e.g. 1.2K or 1.2 million). | `empty` (Standard formatting, represented as `""`) <br>`short` (Compact short, e.g. 1.2K)<br>`long` (Compact long, e.g. 1.2 thousand) | *None* (Dimension is fully covered) | `empty` (Standard decimal formatting) |
+| `value` <br> **Java Name:** `Value` | The input numeric value (represented as a standard double) to be formatted. | `0.0`, `1.2`, `0.00831765`<br>`1234565.0`, `-1230.05` | Comprehensive mathematical scale:<br>- Powers of 10 ($10^{-6}$ to $10^{12}$)<br>- Multiples ($1.5 \times 10^i$, $5 \times 10^i$)<br>- Edge cases: `12.0`, `123.0`, `1234.56`, `1234567.0`, `0.000123`, `-0.0`, `0.5`, `1.5`, `2.5`, `3.5`, `0.125`, `0.135`, `999.9`, `999999.9`<br>- Negatives of all the above. | *Mandatory* (No default) |
+| `grouping_strategy` <br> **Java Name:** `GroupingStrategy` | Controls the application of digit grouping separators. | `auto` (Uses locale default grouping)<br>`off` (Disables grouping entirely) | `min2` (Groups only if 2+ digits in first group)<br>`thousand` (Forces 3-digit grouping) | `auto` |
+| `rounding_mode` <br> **Java Name:** `RoundingMode` | Controls the mathematical rounding algorithm when rounding fractional digits. | `half-even` (Bankers rounding, rounds to nearest even) | `half-up` (Commercial rounding)<br>`up` (Away from zero)<br>`down` (Toward zero)<br>`ceiling` (Toward +infinity)<br>`floor` (Toward -infinity) | `half-even` |
+| `precision` <br> **Java Name:** `Precision` | Overrides the default fractional or significant digit precision. | `default` (Uses pattern defaults)<br>`min2` (Minimum 2 fraction digits, pads with zeros)<br>`max2` (Maximum 2 fraction digits, rounds value) | `min0` (Forces integer representation)<br>`sig3` (Limits to 3 significant digits) | `default` |
+| `sign_display` <br> **Java Name:** `SignDisplay` | Controls when the positive or negative sign is displayed. | `auto` (Shows sign for negatives only)<br>`always` (Always shows sign) | `never` (Hides sign entirely)<br>`except_zero` (Shows sign for non-zero values) | `auto` |
+| `min_integer_digits` <br> **Java Name:** `MinIntegerDigits` | Controls the minimum number of digits displayed to the left of the decimal separator, padding with leading zeros if necessary. | `1` (Default, no padding) | `3` (Pads to 3 digits, e.g., `005`) | `1` |
+| `decimal_separator_display` <br> **Java Name:** `DecimalSeparatorDisplay` | Controls whether the decimal separator is shown when the fractional part is empty. | `auto` (Hides separator if no fraction)<br>`always` (Always shows decimal separator) | `always` | `auto` |
+
+### 3.1. Detailed Dimension References
+
+This section provides the official Unicode Technical Standard #35 (TR35) specifications, exact quotes, and corresponding CLDR XML data examples for each decimal formatting dimension.
+
+#### 3.1.1. `locale` (Locale)
+*   **Why it's a dimension:** Number formatting is highly locale-dependent.
+*   **TR35 Specification:** [UTS #35 Locale & Numbers](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Symbols)
+*   **Spec Quote:** *“Number symbols define the localized symbols that are commonly used when formatting numbers in a given locale.”* (Section 2)
+*   **CLDR Source Files:** 
+    *   `common/main/en.xml` (English rules)
+    *   `common/main/ar.xml` (Arabic rules)
+    *   `common/main/de.xml` (German rules)
+
+#### 3.1.2. `number_system` (NumberSystem)
+*   **Why it's a dimension:** Determines the digit set used to represent the number.
+*   **TR35 Specification:** [TR35 Numbering Systems](https://www.unicode.org/reports/tr35/tr35-numbers.html#Numbering_Systems)
+*   **Spec Quote:** *“Numbering systems information is used to define different representations for numeric values to an end user. ... Numeric systems are simply a decimal based system that uses a predefined set of digits to represent numbers.”* (Section 1)
+*   **CLDR XML Example (`common/main/ar.xml`):**
+    ```xml
+    <defaultNumberingSystem>arab</defaultNumberingSystem>
+    ```
+
+#### 3.1.3. `number_format` (NumberFormat)
+*   **Why it's a dimension:** Controls the core mathematical representation (decimal, percentage, or scientific).
+*   **TR35 Specification:** [TR35 Number Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Formats)
+*   **Spec Quote:** *“Number formats are used to define the rules for formatting numeric quantities... Different formats are provided for different contexts, as follows: decimalFormats... percentFormats... scientificFormats...”* (Section 2)
+*   **CLDR XML Example (`common/main/en.xml`):**
+    ```xml
+    <decimalFormatLength>
+      <decimalFormat>
+        <pattern>#,##0.###</pattern>
+      </decimalFormat>
+    </decimalFormatLength>
+    ```
+
+#### 3.1.4. `decimal_format_length` (DecimalFormatLength)
+*   **Why it's a dimension:** Controls compact scaling (short vs. long) for space-constrained UIs.
+*   **TR35 Specification:** [TR35 Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Number_Formats)
+*   **Spec Quote:** *“A pattern type attribute is used for compact number formats... The short non-currency format is designed for UI environments where space is at a premium...”* (Section 2)
+*   **CLDR XML Example (`common/main/en.xml`):**
+    ```xml
+    <decimalFormatLength type="short">
+    ```
+
+#### 3.1.5. `value` (Value)
+*   **Why it's a dimension:** Value magnitude determines the compact pattern and plural rules applied.
+*   **TR35 Specification:** [TR35 Number Format Patterns & Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns)
+*   **Spec Quote:** *“To format a... unit type for a particular numeric value, determine the count value according to the plural rules for the language, then select the appropriate display form...”* (Section 5)
+*   **CLDR XML Example (`common/main/en.xml`):**
+    ```xml
+    <pattern type="1000" count="one">0K</pattern>
+    ```
+
+#### 3.1.6. `grouping_strategy` (GroupingStrategy)
+*   **Why it's a dimension:** Controls grouping separator application.
+*   **TR35 Specification:** [TR35 Grouping](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns)
+*   **Spec Quote:** *“The grouping separator is a character that separates clusters of integer digits... The grouping size is the number of digits between the grouping separators...”* (Section 3)
+*   **CLDR XML Example (`common/main/en.xml`):**
+    ```xml
+    <pattern>#,##0.###</pattern> <!-- Grouping size 3 -->
+    <minimumGroupingDigits>2</minimumGroupingDigits>
+    ```
+
+#### 3.1.7. `rounding_mode` (RoundingMode)
+*   **Why it's a dimension:** Determines how halfway cases are resolved.
+*   **TR35 Specification:** [TR35 Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns)
+*   **Spec Quote:** *“An implementation may allow the specification of a rounding mode to determine how values are rounded. In the absence of such choices, the default is to round 'half-even'...”* (Section 3)
+*   *Note: Rounding mode is API-driven and not defined in CLDR XML.*
+
+#### 3.1.8. `precision` (Precision)
+*   **Why it's a dimension:** Tests custom overrides for fraction and significant digits.
+*   **TR35 Specification:** [TR35 Digit Precision](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns)
+*   **Spec Quote:** *“There are two ways of controlling how many digits are shown: (a) significant digits counts, or (b) integer and fraction digit counts. ... In order to enable significant digits formatting, use a pattern containing the '@' character.”* (Section 3)
+*   **CLDR XML Example (`common/main/en.xml`):**
+    ```xml
+    <pattern>#,##0.00</pattern> <!-- Forces 2 decimal places -->
+    <pattern>@@@</pattern> <!-- Forces exactly 3 significant digits -->
+    ```
+
+#### 3.1.9. `sign_display` (SignDisplay)
+*   **Why it's a dimension:** Tests rendering of positive and negative signs.
+*   **TR35 Specification:** [TR35 Sign Display](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns)
+*   **Spec Quote:** *“either the positive and negative prefixes or the suffixes must be distinct for any parser using this data to be able to distinguish positive from negative values.”* (Section 3)
+*   **CLDR XML Example (`common/main/en.xml`):**
+    ```xml
+    <pattern>+#,##0.00;-#,##0.00</pattern> <!-- Explicit positive/negative subpatterns -->
+    ```
+
+#### 3.1.10. `min_integer_digits` (MinIntegerDigits)
+*   **Why it's a dimension:** Tests padding of numbers with leading zeros.
+*   **TR35 Specification:** [TR35 Integer Padding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns)
+*   **Spec Quote:** *“A '0' indicates zero-padding: if the number is too short, a zero (in the locale's numeric set) will go there. A '#' indicates no padding...”* (Section 3)
+*   **CLDR XML Example (`common/main/en.xml`):**
+    ```xml
+    <pattern>000.##</pattern> <!-- e.g., formats 5 to "005" -->
+    ```
+
+#### 3.1.11. `decimal_separator_display` (DecimalSeparatorDisplay)
+*   **Why it's a dimension:** Tests forcing of the decimal separator.
+*   **TR35 Specification:** [TR35 Decimal Separator](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns)
+*   **Spec Quote:** *“The '.' shows where the decimal point should go. ... Notice how the pattern characters ',' and '.' are replaced by the characters appropriate for the locale.”* (Section 3)
+*   **CLDR XML Example (`common/main/en.xml`):**
+    ```xml
+    <pattern>#,##0.</pattern> <!-- Separator always shown -->
+    ```
+
+### 3.2. Java API Representation` | `auto` |
 
 ### 3.1. Java API Representation
 
@@ -361,19 +471,104 @@ public final class GenerateDecimalFormatTestData {
 
 Currency formatting inherits several dimensions from Decimal formatting, but introduces currency-specific dimensions that alter layout, symbols, and formatting behavior (accounting parenthesis, long names, narrow symbols). The shared dimensions are redefined here in full to represent their behavior in currency contexts.
 
-| Dimension Column | Explanation | TR35 Spec Reference (Link & Snippet) | Core Set | Extended Set | Default Value / Behavior if Empty |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `locale` <br> **Java Name:** `Locale` | The locale identifier determines the linguistic and regional formatting rules (e.g., currency symbol placement, decimal separator, grouping separator, digit symbols, spacing between currency symbol and number). | [UTS #35 Locale & Numbers](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Symbols) <br><br> **Why it's a dimension:** Number formatting is highly locale-dependent. <br><br> *“Number symbols define the localized symbols that are commonly used when formatting numbers in a given locale.”* (Section 2) <br><br> **CLDR Source Files (Currency patterns/spacing):** <br> - `common/main/en.xml` <br> - `common/main/ar.xml` <br> - `common/main/de.xml` | `ar` (Arabic RTL, Latin digits)<br>`ar_EG` (Arabic Egypt, Eastern Arabic digits)<br>`bn` (Bengali LTR, Bengali digits, Indian grouping)<br>`de` (German, comma/dot separators)<br>`de_CH` (German Swiss, apostrophe separator)<br>`en` (English LTR, dot/comma separators)<br>`ja` (Japanese, CJK myriad grouping)<br>`pt_PT` (Portuguese, space separator)<br>`ru` (Russian, Cyrillic script, complex plurals) | All other modern CLDR locales | `en` |
-| `currency` <br> **Java Name:** `Currency` | The ISO 4217 three-letter code of the currency to format. If empty, formats as a standard decimal/accounting number without a currency unit. | [TR35 Currencies](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br><br> **Why it's a dimension:** Currency-specific digits/rounding override locale defaults. <br><br> *“The formatting of a currency value can depend on the currency itself. ... In the supplemental currency data... [rounding and digits] override whatever is given in the currency numberFormat.”* (Section 5) <br><br> **XML Example (`common/supplemental/supplementalData.xml`):** <br> <pre><code class="language-xml">&lt;info iso4217="USD" digits="2" rounding="0"/&gt;<br>&lt;info iso4217="JPY" digits="0" rounding="0"/&gt;</code></pre> | `USD` (Standard 2-decimal)<br>`EUR` (Standard 2-decimal, European spacing)<br>`JPY` (0-decimal currency)<br>`RUB` (Cyrillic Ruble, complex plurals)<br>`EGP` (Egyptian Pound, RTL Arabic context)<br>`empty` (Omitted, represented as `""`) | All other active legal-tender ISO 4217 currency codes | `empty` (Omitted) |
-| `currency_format_length` <br> **Java Name:** `CurrencyFormatLength` | Controls the overall formatting length style (standard or compact short). <br> *Note: Compact long is not supported for currency in CLDR.* | [TR35 Compact Currency Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Currency_Formats) <br><br> **Why it's a dimension:** Controls standard vs. compact currency formatting. <br><br> *“The short currency format will include currency symbols, and should ideally be no more than 8 em in width... [For compact currency formats] the compact decimal format... should be used if no alt='noCurrency' pattern is present...”* (Section 2) <br><br> **XML Example (`common/main/en.xml`):** <br> <pre><code class="language-xml">&lt;currencyFormatLength type="short"&gt;</code></pre> | `standard` (Standard currency formatting)<br>`short` (Compact short currency style: e.g. $1.2K) | *None* (Dimension is fully covered) | `standard` |
-| `currency_format_type` <br> **Java Name:** `CurrencyFormatType` | Controls the formatting style type (standard or accounting with parentheses for negatives). | [TR35 Currency Patterns](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Patterns) <br><br> **Why it's a dimension:** Controls standard vs. accounting negative formats. <br><br> *“In addition to a standard currency format... locales may provide an 'accounting' form, in which... the same example would appear as '($3.27)'. The locale keyword 'cf' can be used to select the standard or accounting form...”* (Section 2) <br><br> **XML Example (`common/main/en.xml`):** <br> <pre><code class="language-xml">&lt;currencyFormat type="standard"&gt;<br>&lt;currencyFormat type="accounting"&gt;</code></pre> | `standard` (Standard currency formatting)<br>`accounting` (Accounting style: uses parenthesis for negatives) | *None* (Dimension is fully covered) | `standard` |
-| `currency_display` <br> **Java Name:** `CurrencyDisplay` | Controls how the currency unit itself is represented within the formatted string (symbol, narrow symbol, ISO code, full plural name, or hidden/no currency). | [TR35 Currencies & Symbols](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br><br> **Why it's a dimension:** Controls currency unit representation (symbol, code, name, none). <br><br> *“Any sequence [of ¤] is replaced by the localized currency symbol... ¤: Standard currency symbol... ¤¤: ISO currency symbol... ¤¤¤: Appropriate currency display name... ¤¤¤¤¤: Narrow currency symbol...”* (Section 3.2) <br><br> *“The alt="noCurrency" pattern can be used when a currency-style format is desired but without the currency symbol.”* (Section 2.1) <br><br> **XML Example (`common/main/en.xml`):** <br> <pre><code class="language-xml">&lt;pattern&gt;¤#,##0.00&lt;/pattern&gt; <!-- Uses Symbol --><br>&lt;pattern alt="noCurrency"&gt;#,##0.00&lt;/pattern&gt; <!-- noCurrency --></code></pre> | `symbol` (e.g. $1.00)<br>`narrowSymbol` (e.g. narrow variant)<br>`code` (ISO code, e.g. USD 1.00)<br>`name` (Plural name, e.g. 1.00 US dollar)<br>`noCurrency` (Hides symbol, e.g. 1.00) | *None* (Dimension is fully covered) | `symbol` |
-| `input` <br> **Java Name:** `Number` | The input numeric currency amount (represented as a standard double) to be formatted. | [TR35 Currency Patterns & Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Patterns) <br><br> **Why it's a dimension:** Value magnitude determines plural rules and compact thresholds. <br><br> *“To format a... unit type for a particular numeric value, determine the count value according to the plural rules for the language, then select the appropriate display form...”* (Section 5) <br><br> **XML Example (`common/main/en.xml`):** <br> <pre><code class="language-xml">&lt;pattern type="1000" count="one"&gt;¤0K&lt;/pattern&gt;</code></pre> | `0.0`, `1.2`, `0.00831765`<br>`1234565.0`, `-1230.05` | Comprehensive mathematical scale:<br>- Powers of 10 ($10^{-6}$ to $10^{12}$)<br>- Multiples ($1.5 \times 10^i$, $5 \times 10^i$)<br>- Edge cases: `12.0`, `123.0`, `1234.56`, `1234567.0`, `0.000123`, `-0.0`, `0.5`, `1.5`, `2.5`, `3.5`, `0.125`, `0.135`, `999.9`, `999999.9`<br>- Negatives of all the above. | *Mandatory* (No default) |
-| `currency_usage` <br> **Java Name:** `CurrencyUsage` | Specifies the transaction usage context, determining if standard electronic rounding or cash rounding rules apply. | [TR35 Currencies (Cash Rounding)](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies) <br><br> **Why it's a dimension:** Accounts for cash rounding (CHF/CAD 0.05). <br><br> *“cashRounding: the cash rounding increment... to be used when formatting quantities used in cash transactions (as opposed to a quantity that would appear in a more formal setting, such as on a bank statement).”* (Section 5) <br><br> **XML Example (`common/supplemental/supplementalData.xml`):** <br> <pre><code class="language-xml">&lt;info iso4217="CHF" digits="2" rounding="0" cashRounding="5"/&gt;</code></pre> | `standard` (Standard electronic rounding)<br>`cash` (Cash rounding based on circulating coins) | *None* (Dimension is fully covered) | `standard` |
-| `grouping_strategy` <br> **Java Name:** `GroupingStrategy` | Controls the application of digit grouping separators. | [TR35 Grouping](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Controls grouping separator application. <br><br> *“The grouping separator is a character that separates clusters of integer digits... The grouping size is the number of digits between the grouping separators...”* (Section 3) <br><br> **XML Example (`common/main/en.xml`):** <br> <pre><code class="language-xml">&lt;pattern&gt;¤#,##0.00&lt;/pattern&gt; <!-- Grouping size 3 --></code></pre> | `auto` (Uses locale default grouping)<br>`off` (Disables grouping entirely) | `min2` (Groups only if 2+ digits in first group)<br>`thousand` (Forces 3-digit grouping) | `auto` |
-| `rounding_mode` <br> **Java Name:** `RoundingMode` | Controls the mathematical rounding algorithm when rounding fractional digits. | [TR35 Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns) <br><br> **Why it's a dimension:** Determines how halfway cases are resolved. <br><br> *“An implementation may allow the specification of a rounding mode to determine how values are rounded. In the absence of such choices, the default is to round 'half-even'...”* (Section 3) <br><br> *Note: Rounding mode is API-driven and not defined in CLDR XML.* | `half-even` (Bankers rounding, rounds to nearest even) | `half-up` (Commercial rounding)<br>`up` (Away from zero)<br>`down` (Toward zero)<br>`ceiling` (Toward +infinity)<br>`floor` (Toward -infinity) | `half-even` |
+| Dimension Column | Explanation | Core Set | Extended Set | Default Value / Behavior if Empty |
+| :--- | :--- | :--- | :--- | :--- |
+| `locale` <br> **Java Name:** `Locale` | The locale identifier determines the linguistic and regional formatting rules (e.g., currency symbol placement, decimal separator, grouping separator, digit symbols, spacing between currency symbol and number). | `ar` (Arabic RTL, Latin digits)<br>`ar_EG` (Arabic Egypt, Eastern Arabic digits)<br>`bn` (Bengali LTR, Bengali digits, Indian grouping)<br>`de` (German, comma/dot separators)<br>`de_CH` (German Swiss, apostrophe separator)<br>`en` (English LTR, dot/comma separators)<br>`ja` (Japanese, CJK myriad grouping)<br>`pt_PT` (Portuguese, space separator)<br>`ru` (Russian, Cyrillic script, complex plurals) | All other modern CLDR locales | `en` |
+| `currency` <br> **Java Name:** `Currency` | The ISO 4217 three-letter code of the currency to format. If empty, formats as a standard decimal/accounting number without a currency unit. | `USD` (Standard 2-decimal)<br>`EUR` (Standard 2-decimal, European spacing)<br>`JPY` (0-decimal currency)<br>`RUB` (Cyrillic Ruble, complex plurals)<br>`EGP` (Egyptian Pound, RTL Arabic context)<br>`empty` (Omitted, represented as `""`) | All other active legal-tender ISO 4217 currency codes | `empty` (Omitted) |
+| `currency_format_length` <br> **Java Name:** `CurrencyFormatLength` | Controls the overall formatting length style (standard or compact short). <br> *Note: Compact long is not supported for currency in CLDR.* | `standard` (Standard currency formatting)<br>`short` (Compact short currency style: e.g. $1.2K) | *None* (Dimension is fully covered) | `standard` |
+| `currency_format_type` <br> **Java Name:** `CurrencyFormatType` | Controls the formatting style type (standard or accounting with parentheses for negatives). | `standard` (Standard currency formatting)<br>`accounting` (Accounting style: uses parenthesis for negatives) | *None* (Dimension is fully covered) | `standard` |
+| `currency_display` <br> **Java Name:** `CurrencyDisplay` | Controls how the currency unit itself is represented within the formatted string (symbol, narrow symbol, ISO code, full plural name, or hidden/no currency). | `symbol` (e.g. $1.00)<br>`narrowSymbol` (e.g. narrow variant)<br>`code` (ISO code, e.g. USD 1.00)<br>`name` (Plural name, e.g. 1.00 US dollar)<br>`noCurrency` (Hides symbol, e.g. 1.00) | *None* (Dimension is fully covered) | `symbol` |
+| `input` <br> **Java Name:** `Number` | The input numeric currency amount (represented as a standard double) to be formatted. | `0.0`, `1.2`, `0.00831765`<br>`1234565.0`, `-1230.05` | Comprehensive mathematical scale:<br>- Powers of 10 ($10^{-6}$ to $10^{12}$)<br>- Multiples ($1.5 \times 10^i$, $5 \times 10^i$)<br>- Edge cases: `12.0`, `123.0`, `1234.56`, `1234567.0`, `0.000123`, `-0.0`, `0.5`, `1.5`, `2.5`, `3.5`, `0.125`, `0.135`, `999.9`, `999999.9`<br>- Negatives of all the above. | *Mandatory* (No default) |
+| `currency_usage` <br> **Java Name:** `CurrencyUsage` | Specifies the transaction usage context, determining if standard electronic rounding or cash rounding rules apply. | `standard` (Standard electronic rounding)<br>`cash` (Cash rounding based on circulating coins) | *None* (Dimension is fully covered) | `standard` |
+| `grouping_strategy` <br> **Java Name:** `GroupingStrategy` | Controls the application of digit grouping separators. | `auto` (Uses locale default grouping)<br>`off` (Disables grouping entirely) | `min2` (Groups only if 2+ digits in first group)<br>`thousand` (Forces 3-digit grouping) | `auto` |
+| `rounding_mode` <br> **Java Name:** `RoundingMode` | Controls the mathematical rounding algorithm when rounding fractional digits. | `half-even` (Bankers rounding, rounds to nearest even) | `half-up` (Commercial rounding)<br>`up` (Away from zero)<br>`down` (Toward zero)<br>`ceiling` (Toward +infinity)<br>`floor` (Toward -infinity) | `half-even` |
 
-### 4.1. Java API Representation
+### 4.1. Detailed Dimension References
+
+This section provides the official Unicode Technical Standard #35 (TR35) specifications, exact quotes, and corresponding CLDR XML data examples for each currency formatting dimension.
+
+#### 4.1.1. `locale` (Locale)
+*   **Why it's a dimension:** Currency formatting is highly locale-dependent (symbol placement, spacing, separators).
+*   **TR35 Specification:** [UTS #35 Locale & Numbers](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Symbols)
+*   **Spec Quote:** *“Number symbols define the localized symbols that are commonly used when formatting numbers in a given locale.”* (Section 2)
+*   **CLDR Source Files (Currency patterns/spacing):**
+    *   `common/main/en.xml` (English rules)
+    *   `common/main/ar.xml` (Arabic rules)
+    *   `common/main/de.xml` (German rules)
+
+#### 4.1.2. `currency` (Currency)
+*   **Why it's a dimension:** Currency-specific digits and rounding override locale defaults.
+*   **TR35 Specification:** [TR35 Currencies](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies)
+*   **Spec Quote:** *“The formatting of a currency value can depend on the currency itself. ... In the supplemental currency data... [rounding and digits] override whatever is given in the currency numberFormat.”* (Section 5)
+*   **CLDR XML Example (`common/supplemental/supplementalData.xml`):**
+    ```xml
+    <info iso4217="USD" digits="2" rounding="0"/>
+    <info iso4217="JPY" digits="0" rounding="0"/>
+    ```
+
+#### 4.1.3. `currency_format_length` (CurrencyFormatLength)
+*   **Why it's a dimension:** Controls standard vs. compact currency formatting.
+*   **TR35 Specification:** [TR35 Compact Currency Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Currency_Formats)
+*   **Spec Quote:** *“The short currency format will include currency symbols, and should ideally be no more than 8 em in width... [For compact currency formats] the compact decimal format... should be used if no alt='noCurrency' pattern is present...”* (Section 2)
+*   **CLDR XML Example (`common/main/en.xml`):**
+    ```xml
+    <currencyFormatLength type="short">
+    ```
+
+#### 4.1.4. `currency_format_type` (CurrencyFormatType)
+*   **Why it's a dimension:** Controls standard vs. accounting negative representations.
+*   **TR35 Specification:** [TR35 Currency Patterns](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Patterns)
+*   **Spec Quote:** *“In addition to a standard currency format... locales may provide an 'accounting' form, in which... the same example would appear as '($3.27)'. The locale keyword 'cf' can be used to select the standard or accounting form...”* (Section 2)
+*   **CLDR XML Example (`common/main/en.xml`):**
+    ```xml
+    <currencyFormat type="standard">
+    <currencyFormat type="accounting">
+    ```
+
+#### 4.1.5. `currency_display` (CurrencyDisplay)
+*   **Why it's a dimension:** Controls currency unit representation (symbol, narrow symbol, ISO code, full name, or none).
+*   **TR35 Specification:** [TR35 Currencies & Symbols](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies)
+*   **Spec Quote:** *“Any sequence [of ¤] is replaced by the localized currency symbol... ¤: Standard currency symbol... ¤¤: ISO currency symbol... ¤¤¤: Appropriate currency display name... ¤¤¤¤¤: Narrow currency symbol...”* (Section 3.2) <br><br> *“The alt="noCurrency" pattern can be used when a currency-style format is desired but without the currency symbol.”* (Section 2.1)
+*   **CLDR XML Example (`common/main/en.xml`):**
+    ```xml
+    <pattern>¤#,##0.00</pattern> <!-- Uses standard symbol -->
+    <pattern alt="noCurrency">#,##0.00</pattern> <!-- Omit symbol, keep formatting -->
+    ```
+
+#### 4.1.6. `input` (Number/Value)
+*   **Why it's a dimension:** Value magnitude determines plural rules and compact thresholds.
+*   **TR35 Specification:** [TR35 Currency Patterns & Compact Formats](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Patterns)
+*   **Spec Quote:** *“To format a... unit type for a particular numeric value, determine the count value according to the plural rules for the language, then select the appropriate display form...”* (Section 5)
+*   **CLDR XML Example (`common/main/en.xml`):**
+    ```xml
+    <pattern type="1000" count="one">¤0K</pattern>
+    ```
+
+#### 4.1.7. `currency_usage` (CurrencyUsage)
+*   **Why it's a dimension:** Accounts for cash rounding rules (e.g., CHF rounding to 0.05).
+*   **TR35 Specification:** [TR35 Currencies (Cash Rounding)](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currencies)
+*   **Spec Quote:** *“cashRounding: the cash rounding increment... to be used when formatting quantities used in cash transactions (as opposed to a quantity that would appear in a more formal setting, such as on a bank statement).”* (Section 5)
+*   **CLDR XML Example (`common/supplemental/supplementalData.xml`):**
+    ```xml
+    <info iso4217="CHF" digits="2" rounding="0" cashRounding="5"/>
+    ```
+
+#### 4.1.8. `grouping_strategy` (GroupingStrategy)
+*   **Why it's a dimension:** Controls grouping separator application.
+*   **TR35 Specification:** [TR35 Grouping](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns)
+*   **Spec Quote:** *“The grouping separator is a character that separates clusters of integer digits... The grouping size is the number of digits between the grouping separators...”* (Section 3)
+*   **CLDR XML Example (`common/main/en.xml`):**
+    ```xml
+    <pattern>¤#,##0.00</pattern> <!-- Grouping size 3 -->
+    ```
+
+#### 4.1.9. `rounding_mode` (RoundingMode)
+*   **Why it's a dimension:** Determines how halfway cases are resolved.
+*   **TR35 Specification:** [TR35 Rounding](https://www.unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns)
+*   **Spec Quote:** *“An implementation may allow the specification of a rounding mode to determine how values are rounded. In the absence of such choices, the default is to round 'half-even'...”* (Section 3)
+*   *Note: Rounding mode is API-driven and not defined in CLDR XML.*
+
+### 4.2. Java API Representation
 
 The following Java code snippet reflects the exact `Dimensions` structure and datasets implemented in `GenerateCurrencyFormatTestData.java` (reusing core sets where applicable):
 
