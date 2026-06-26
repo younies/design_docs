@@ -68,61 +68,61 @@ A `Dimension` represents a single input variable or configuration option that in
 The `Combinator` is responsible for taking all defined dimensions and orchestrating their combination to produce the final test suites, saving them as Tab-Separated Values (TSV) files.
 
 #### Combination & Splitting Strategy:
-1. **Core Test Suite (`core.tsv`):** 
-   Generates a Cartesian product of the **Core Sets** of all dimensions. This compact suite is designed to cover approximately **90% of all distinct logic paths and edge cases** (e.g., standard styles across high-signal locales, numbering systems, and representative values) with a minimal footprint. Placed under `decimal/core.tsv` and `currency/core.tsv`.
-2. **Extended Locales Suite (`mod_loc.tsv` / `*_mod_loc.tsv`):**
-   Pairs the **Extended Modern Locales** set with the **Core Sets** of all other dimensions to verify language-specific rules across the long tail.
-3. **Extended Numbers Suite (`ext_num.tsv` / `*_ext_num.tsv`):**
-   Pairs the **Extended Numbers** set (exhaustive powers of 10, rounding edge cases) with the **Core Locales**, Core Numbering Systems, and Core styles to verify mathematical precision and scale transitions.
-4. **Extended Numbering Systems Suite (`ext_ns.tsv` / `*_ext_ns.tsv`):**
-   Pairs the **Extended Numbering Systems** set (e.g., Devanagari, Bengali digits) with Core Locales, Core styles, and Core values to verify digit shape rendering across scripts.
-5. **Extended Currencies Suite (Currency only - `*_mod_cur.tsv`):**
-   Pairs the **Extended Modern Currencies** set with the Core Locales, Core Numbering Systems, and Core styles to verify rare currency symbol rendering, ISO codes, and custom decimal rules.
-6. **Deduplication:** Extended sets strictly exclude values already present in the core sets to prevent redundant test cases.
-7. **Hybrid Consolidation/Splitting:** Thanks to the Tiny Core Sets optimization, the total test cases are extremely compact. To strictly enforce the **10,000-line maximum file size limit** while keeping directory clutter low, the generator employs a hybrid strategy (producing exactly 10 files total): the Extended Locales suite (`mod_loc.tsv`, ~4.6K lines) and Core suite (`core.tsv`, ~4.5K lines) remain consolidated, while the Extended Currencies suite (~10.6K cases total, excluding redundant `noCurrency`) and Extended Numbers suite (~10K cases total, excluding `noCurrency`) are split by `CurrencyDisplay` into 4 files each (resulting in files of ~2.6K and ~2.5K lines respectively).
+1.  **Core Test Suite (`core.tsv`):**
+    Generates a Cartesian product of the **Core Sets** of all dimensions. This compact suite is designed to cover approximately **90% of all distinct logic paths and edge cases** (e.g., standard styles across high-signal locales, numbering systems, and representative values) with a minimal footprint. Placed under `decimal/core.tsv` and `currency/core.tsv`.
+2.  **Extended Locales Suite (`currencies_modern_locales.tsv` / `decimal/mod_loc.tsv`):**
+    Pairs the **Extended Modern Locales** set with other dimensions. For currency, it uses the **Mixing Approach** (combining Tiny Currencies, the locale's default currency, and a stable random currency) to verify language-specific rules across the long tail.
+3.  **Extended Numbers Suite (`[display]_ext_num.tsv` / `decimal/ext_num.tsv`):**
+    Pairs the **Extended Numbers** set (exhaustive powers of 10, rounding edge cases) with the Core/Tiny dimensions to verify mathematical precision and scale transitions.
+4.  **Extended Numbering Systems Suite (`ext_ns.tsv` / `decimal/ext_ns.tsv`):**
+    Pairs the **Extended Numbering Systems** set (e.g., Devanagari, Bengali digits) with Core dimensions to verify digit shape rendering across scripts.
+5.  **Extended Currencies Suite (`[display]_modern_currencies.tsv`):**
+    Pairs the **Extended Modern Currencies** set with other dimensions using the **Mixing Approach** (combining Tiny Locales, the currency's representative locale, and a stable random locale) to verify rare currency symbol rendering, ISO codes, and custom decimal rules.
+6.  **Deduplication:** Extended sets strictly exclude values already present in the core sets to prevent redundant test cases.
+7.  **Consolidation & Splitting Strategy:**
+    To strictly enforce the **10,000-line maximum file size limit** while keeping directory clutter low, the generator employs a hybrid strategy:
+    *   **Consolidated Files**: Smaller suites like `currencies_modern_locales.tsv` (~8.7K lines) and `core.tsv` (~4.5K lines) are consolidated into single files.
+    *   **Split Files**: Larger suites like Extended Currencies and Extended Numbers are split by `CurrencyDisplay` (4 active styles: `symbol`, `narrowSymbol`, `code`, `name`; excluding redundant `noCurrency`) into 4 files each (resulting in files of ~3.8K and ~2.5K lines respectively).
 
-### 2.3. Combinatorial Optimization (Tiny Core Sets)
+### 2.3. Combinatorial Optimization (The Mixing Approach)
 
-To prevent **combinatorial explosion** while maintaining high coverage across the long tail, the generator employs an optimization strategy using **Tiny Core Sets** (Minimal Core Subsets) when constructing the Extended Suites.
+To prevent **combinatorial explosion** while maintaining high coverage across the long tail, the generator employs an optimization strategy called the **Mixing Approach** when constructing the Extended Suites for currencies.
 
 #### The Problem: Combinatorial Explosion
 If we pair an **Extended Set** of one dimension (e.g., all 150+ modern currencies) with the **full Core Sets** of all other dimensions (9 locales, 5 values, 2 grouping strategies, 2 format types, 5 displays), we end up with a massive number of redundant test cases:
 $$\text{Total Cases} = 150 \times 9 \times 5 \times 2 \times 2 \times 5 = 135,000\text{ cases per file}$$
 This results in extremely large test files, high disk usage, and slow test execution times.
 
-#### The Solution: Tiny Core Sets
-Instead of pairing the active Extended dimension with the *full* Core Sets of other dimensions, the generator pairs it with a **Tiny Core Set**—a minimal, highly representative subset containing only the most critical variations:
+#### The Solution: The Mixing Approach
+Instead of a naive Cartesian product or a overly restrictive static subset, the Mixing Approach combines three pillars:
 
-1.  **Tiny Locales (3 locales instead of 10):**
-    *   `en` (English: LTR, dot/comma separators, standard symbol placement)
-    *   `ar` (Arabic: RTL, Latin digits, right-to-left symbol/minus placement)
-    *   `de` (German: LTR, comma/dot separators, space-separated suffix symbol placement)
-    *   *Rationale:* Covers LTR, RTL, suffix/prefix placement, and comma/dot separator variations. (Note: Special layouts like Indian grouping in `bn`, Swiss grouping in `de_CH`, and suffix-minus in `fy` are tested thoroughly in the Core Suite against the full Cartesian product).
-2.  **Tiny Values (2 values instead of 5):**
-    *   `1.2` (Positive decimal, standard formatting and rounding)
-    *   `-1230.05` (Negative decimal with grouping, negative signs, grouping, and accounting parentheses)
-    *   *Rationale:* Covers positive/negative, grouping/non-grouping, and rounding.
-3.  **Tiny Currencies (2 currencies instead of 6 - Currency only):**
-    *   `USD` (Standard 2-decimal currency)
-    *   `JPY` (0-decimal currency, triggers integer-only formatting and rounding)
-    *   *Rationale:* Covers standard fractional vs. integer-only currency rounding and formatting rules.
+1.  **Tiny Core Baseline (Cartesian Baseline)**:
+    We define a minimal, high-signal subset of core dimensions to act as a baseline:
+    *   **Tiny Locales**: `en` (LTR, dot/comma), `ar` (RTL, Latin digits, RTL sign), `de` (LTR, comma/dot, suffix symbol). Covers all major layout variations.
+    *   **Tiny Currencies**: `USD` (Standard 2-decimal), `EUR` (Standard 2-decimal, European spacing).
+    *   **Tiny Values**: `1.2` (Positive decimal), `-1230.05` (Negative decimal, grouping, accounting).
+2.  **Locale-Aware Relevance (Native Pairings)**:
+    We explicitly pair each extended dimension with its most relevant counterpart to ensure critical real-world coverage:
+    *   For each **extended currency**, we resolve and include its **representative locale** (the native locale that uses it as default, e.g., `CAD` is tested in `en_CA`).
+    *   For each **extended locale**, we resolve and include its **default currency** (e.g., `af` is tested with `ZAR`).
+3.  **Stable Random Diversity (Fuzzing)**:
+    To catch unexpected interactions across the long tail, we add exactly **one extra random** dimension:
+    *   For each currency, we pair it with one extra random locale.
+    *   For each locale, we pair it with one extra random currency.
+    *   **Consistent Hashing**: The selection is made using a SHA-256 consistent hashing algorithm (`argmin(stableHash(key + "_" + candidate))`). This ensures the selection is **100% deterministic and stable**. If CLDR adds or removes locales/currencies in the future, the selection for unrelated keys remains unchanged, preventing massive Git diff churn.
 
-#### Optimized Consolidated Strategy
-When generating an **Extended Suite** for a target dimension, the generator loops over the target's extended values, but restricts all other dimensions to their **Tiny Core Sets**. To strictly respect the **10,000-line maximum file size limit** and remove massive redundancy, the `NO_CURRENCY` display style (which hides the symbol, making ~95% of currencies format identically) is **excluded from all Extended Suites**. Large suites are split by `CurrencyDisplay` (4 active styles) into separate files, while smaller suites remain consolidated:
+#### Optimized Footprint & Sizes
+By using the Mixing Approach, the sizes of the generated files are kept extremely compact while dramatically expanding high-signal coverage:
+*   **Extended Currencies (`currencies_[display]_modern_currencies.tsv`)**: Each of the 4 files contains approximately **3,880 lines** (representing a ~97% footprint reduction from the naive Cartesian product).
+*   **Extended Locales (`currencies_modern_locales.tsv`)**: Remaining consolidated in a single file of approximately **8,750 lines** (well under the 10,000-line limit).
+*   **Extended Numbers (`currencies_[display]_extended_numbers.tsv`)**: Each of the 4 files contains exactly **2,521 lines**.
 
-*   **Extended Currencies Suite (`[display]_mod_cur.tsv`):** Pairs Extended Currencies (148) with `TINY_LOCALES` (3) and `TINY_VALUES` (2) across all 3 valid Style Pairs, **split by `CurrencyDisplay` (4 active styles, excluding redundant `noCurrency`)** to strictly respect the 10,000-line limit.
-    *   This produces **4 separate files** (`symbol_mod_cur.tsv`, `narrow_mod_cur.tsv`, `code_mod_cur.tsv`, `name_mod_cur.tsv`).
-    *   Each file contains: `148 Currencies * 3 Locales * 2 Values * 3 Styles = 2,664 cases (+1 header line = 2,665 lines)`.
-    *   **Status: All 4 files are strictly under the 10,000-line limit (representing a 90.1% overall footprint reduction from 135,000).**
-*   **Extended Locales Suite (`mod_loc.tsv`):** Pairs Extended Locales (96) with `TINY_CURRENCIES` (2) and `TINY_VALUES` (2) across all 12 valid Styles (excluding `NO_CURRENCY`). Since it is already well under 10,000 lines, it remains consolidated as a single file.
-    $$\text{Consolidated Cases} = 96\text{ Locales} \times 2\text{ Currencies} \times 2\text{ Values} \times 12\text{ Styles} = 4,608\text{ cases (+1 header line = 4,609 lines)}$$
-    *   **Status: Strictly under the 10,000-line limit.**
-*   **Extended Numbers Suite (`[display]_ext_num.tsv`):** Pairs Extended Numbers (140) with `TINY_LOCALES` (3) and `TINY_CURRENCIES` (2) across all 3 valid Style Pairs, **split by `CurrencyDisplay` (4 active styles, excluding `noCurrency`)** to strictly respect the 10,000-line limit.
-    *   This produces **4 separate files** (`symbol_ext_num.tsv`, `narrow_ext_num.tsv`, `code_ext_num.tsv`, `name_ext_num.tsv`).
-    *   Each file contains: `140 Numbers * 3 Locales * 2 Currencies * 3 Styles = 2,520 cases (+1 header line = 2,521 lines)`.
-    *   **Status: All 4 files are strictly under the 10,000-line limit.**
+### 2.4. Workaround for ICU Formatting Bug
 
-This optimization dramatically reduces the test suite footprint and execution time while ensuring that every extended value is still rigorously verified across all formatting styles and in key representative environments.
+During the implementation of the Mixing Approach, we discovered a systematic bug in the ICU4J formatting library:
+*   **The Bug**: Formatting a currency with the `NAME` display style (`UnitWidth.FULL_NAME` in ICU) throws a `java.lang.AssertionError` at `MutablePatternModifier.getCurrencySymbolForUnitWidth` if the target locale has a custom, currency-specific `<pattern>` defined in its CLDR data (e.g., Turkish `tr` formatting its own currency `TRY` which has a custom pattern `<pattern>¤#,##0.00</pattern>` in `tr.xml`).
+*   **The Workaround**: To prevent the generator from crashing while maintaining maximum possible coverage, the `generateTestCases` method dynamically inspects the resolved `CLDRFile` for the target locale. If a currency-specific pattern is explicitly defined (i.e., the path `//ldml/numbers/currencies/currency[@type="..."]/pattern[@type="standard"]` is not null), we **skip** generating the `NAME` display style test cases for that specific locale/currency combination.
+*   **Impact**: Only a tiny handful of high-risk combinations (e.g., `tr`+`TRY`+`NAME`) are omitted from the test data, ensuring the suite remains executable and robust.
 
 ---
 
@@ -825,6 +825,12 @@ public final class GenerateCurrencyFormatTestData {
         private static final ImmutableSet<String> CORE_CURRENCIES =
                 ImmutableSet.of("USD", "EUR", "JPY", "RUB", "EGP", "");
 
+        // Tiny subset of locales for extended suites baseline
+        private static final Set<String> TINY_LOCALES = Set.of("en", "ar", "de");
+
+        // Tiny subset of currencies for extended suites baseline
+        private static final Set<String> TINY_CURRENCIES = Set.of("USD", "EUR");
+
         // Core subset of currency usages
         private static final ImmutableSet<CurrencyUsage> CORE_CURRENCY_USAGES =
                 ImmutableSet.copyOf(CurrencyUsage.values());
@@ -839,9 +845,157 @@ public final class GenerateCurrencyFormatTestData {
 
         public static ImmutableSet<String> getCoreLocales() { return CORE_LOCALES; }
         public static ImmutableSet<String> getCoreCurrencies() { return CORE_CURRENCIES; }
+        public static Set<String> getTinyLocales() { return TINY_LOCALES; }
+        public static Set<String> getTinyCurrencies() { return TINY_CURRENCIES; }
         public static ImmutableSet<CurrencyUsage> getCoreCurrencyUsages() { return CORE_CURRENCY_USAGES; }
         public static ImmutableSet<GroupingStrategy> getCoreGroupingStrategies() { return CORE_GROUPING_STRATEGIES; }
         public static ImmutableSet<RoundingMode> getCoreRoundingModes() { return CORE_ROUNDING_MODES; }
+
+        /**
+         * A mapping from each currency code to the list of locales that use it as their default currency.
+         */
+        private static final Map<String, List<String>> CURRENCY_TO_LOCALES = buildCurrencyToLocalesMap();
+
+        /**
+         * Builds the mapping of currency to locales. It iterates over all modern and core locales,
+         * resolves their default currency using supplemental data, and populates the map.
+         */
+        private static Map<String, List<String>> buildCurrencyToLocalesMap() {
+            Map<String, List<String>> map = new HashMap<>();
+            SupplementalDataInfo sdi = CLDR_CONFIG.getSupplementalDataInfo();
+            Set<String> locales = new TreeSet<>();
+            locales.addAll(getCoreLocales());
+            locales.addAll(getExtendedModernLocales());
+
+            for (String localeStr : locales) {
+                ULocale locale = new ULocale(localeStr);
+                ULocale maximized = ULocale.addLikelySubtags(locale);
+                String territory = maximized.getCountry();
+                if (territory == null || territory.isEmpty()) {
+                    continue;
+                }
+                String defaultCurrency = sdi.getDefaultCurrency(territory);
+                if (defaultCurrency != null && !defaultCurrency.equals("XXX")) {
+                    map.computeIfAbsent(defaultCurrency, k -> new ArrayList<>()).add(localeStr);
+                }
+            }
+            for (List<String> list : map.values()) {
+                Collections.sort(list);
+            }
+            return map;
+        }
+
+        /**
+         * Computes a stable, deterministic 64-bit hash of the input string using SHA-256.
+         * This is used to ensure stable selection of extra locales/currencies and minimize git diff churn.
+         */
+        private static long stableHash(String input) {
+            try {
+                java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                byte[] hashBytes = md.digest(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                long result = 0;
+                for (int i = 0; i < 8; i++) {
+                    result = (result << 8) | (hashBytes[i] & 0xff);
+                }
+                return result;
+            } catch (java.security.NoSuchAlgorithmException e) {
+                return input.hashCode();
+            }
+        }
+
+        /**
+         * Selects a representative locale for a currency (the first one alphabetically among those that
+         * use it as default). Returns null if the currency is already covered by a locale in TINY_LOCALES.
+         */
+        public static String getRepresentativeLocale(String currency) {
+            List<String> locales = CURRENCY_TO_LOCALES.get(currency);
+            if (locales == null || locales.isEmpty()) {
+                return null;
+            }
+            for (String loc : locales) {
+                if (TINY_LOCALES.contains(loc)) {
+                    return null;
+                }
+            }
+            return locales.get(0);
+        }
+
+        /**
+         * Deterministically selects an 'extra' locale to test with a currency from all available locales,
+         * excluding the specified ones. Uses a consistent hashing style (minimizing hash of currency + locale)
+         * to ensure selection stability when the locale set changes.
+         */
+        public static String getExtraLocale(String currency, Set<String> exclude) {
+            Set<String> allLocales = new TreeSet<>();
+            allLocales.addAll(getCoreLocales());
+            allLocales.addAll(getExtendedModernLocales());
+            
+            List<String> candidates = new ArrayList<>();
+            for (String loc : allLocales) {
+                if (!exclude.contains(loc)) {
+                    candidates.add(loc);
+                }
+            }
+            if (candidates.isEmpty()) {
+                return null;
+            }
+            String bestLocale = null;
+            long bestHash = Long.MAX_VALUE;
+            for (String loc : candidates) {
+                long hash = stableHash(currency + "_" + loc);
+                if (hash < bestHash) {
+                    bestHash = hash;
+                    bestLocale = loc;
+                }
+            }
+            return bestLocale;
+        }
+
+        /**
+         * Deterministically selects an 'extra' currency to test with a locale from all modern currencies,
+         * excluding the specified ones. Uses a consistent hashing style (minimizing hash of locale + currency)
+         * to ensure selection stability when the currency set changes.
+         */
+        public static String getExtraCurrency(String locale, Set<String> exclude) {
+            Set<String> allCurrencies = new TreeSet<>();
+            allCurrencies.addAll(getCoreCurrencies());
+            allCurrencies.addAll(getExtendedModernCurrencies());
+            
+            List<String> candidates = new ArrayList<>();
+            for (String curr : allCurrencies) {
+                if (!exclude.contains(curr) && !curr.isEmpty()) {
+                    candidates.add(curr);
+                }
+            }
+            if (candidates.isEmpty()) {
+                return null;
+            }
+            String bestCurrency = null;
+            long bestHash = Long.MAX_VALUE;
+            for (String curr : candidates) {
+                long hash = stableHash(locale + "_" + curr);
+                if (hash < bestHash) {
+                    bestHash = hash;
+                    bestCurrency = curr;
+                }
+            }
+            return bestCurrency;
+        }
+
+        /**
+         * Resolves the default currency for a given locale string using supplemental data.
+         * Returns null if the default currency is 'XXX' (no currency).
+         */
+        public static String getDefaultCurrencyForLocale(String localeStr) {
+            ULocale locale = new ULocale(localeStr);
+            ULocale maximized = ULocale.addLikelySubtags(locale);
+            String territory = maximized.getCountry();
+            if (territory == null || territory.isEmpty()) {
+                return null;
+            }
+            String defaultCurrency = CLDR_CONFIG.getSupplementalDataInfo().getDefaultCurrency(territory);
+            return "XXX".equals(defaultCurrency) ? null : defaultCurrency;
+        }
 
         public static Set<String> getExtendedModernLocales() {
             Set<String> modernLocales =
@@ -969,19 +1123,22 @@ The decimal generator outputs four main files under the `decimal/` directory. To
    * **Purpose:** Direct testing of digit representation in less common numbering systems.
 
 ### 5.2. Currency Test Suites
-The currency generator outputs a structured set of files under the `currency/` directory. Due to the extra dimensions (Currencies and Usage), the extended suites are split systematically by style (combinations of `CurrencyDisplay`, `CurrencyFormatLength`, and `CurrencyFormatType`) to maintain file readability.
 
-There are **12 distinct styles** (4 display types $\times$ 3 valid length/type pairs). The files for extended suites are split by style, using a prefix format: `{display}[_{type}][_{length}]` (where default `standard` values are omitted, e.g., `symbol`, `symbol_acc`, or `symbol_short`).
+The currency generator outputs a structured set of files under the `currency/` directory. Due to the extra dimensions (Currencies and Usage), the extended suites are optimized using the **Mixing Approach** and split systematically by **`CurrencyDisplay`** (excluding the redundant `NO_CURRENCY` style) to maintain file readability and strictly keep sizes below the 10,000-line threshold.
 
-1. **`core.tsv` (Core Suite)**
-   * **Combinations:** Core Locales ($9$) $\times$ Core Currencies ($6$) $\times$ Core Usages ($2$) $\times$ All Styles ($12$) $\times$ Core Numbers ($5$) $\times$ Core Grouping ($2$) $\times$ Core Rounding ($1$) = **$12,960$ test cases**.
-   * **Purpose:** Core validation of major currency formats.
-2. **Extended Modern Currencies (`{style_prefix}_mod_cur.tsv`)**
-   * **Combinations:** Core Locales ($9$) $\times$ Core Usages ($2$) $\times$ Extended Currencies (~$150$) $\times$ Single Style ($1$) $\times$ Core Numbers ($5$) = **~$13,500$ test cases per file**.
-   * **Split:** A file is written for each of the $12$ styles (e.g., `symbol_acc_mod_cur.tsv`).
-3. **Extended Modern Locales (`{style_prefix}_mod_loc.tsv`)**
-   * **Combinations:** Extended Locales (~$140$) $\times$ Core Usages ($2$) $\times$ Core Currencies ($6$) $\times$ Single Style ($1$) $\times$ Core Numbers ($5$) = **~$8,400$ test cases per file**.
-   * **Split:** A file is written for each of the $12$ styles.
-4. **Extended Numbers (`{style_prefix}_ext_num.tsv`)**
-   * **Combinations:** Core Locales ($9$) $\times$ Core Usages ($2$) $\times$ Core Currencies ($6$) $\times$ Single Style ($1$) $\times$ Extended Numbers (~$120$) = **~$12,960$ test cases per file**.
-   * **Split:** A file is written for each of the $12$ styles.
+1.  **`core.tsv` (Core Suite)**
+    *   **Size**: **$4,500$ test cases** (represented in `currencies.tsv`).
+    *   **Purpose**: Core validation of major currency formats.
+2.  **Extended Modern Currencies (`currencies_[display]_modern_currencies.tsv`)**
+    *   **Combinations**: Extended Currencies (~$148$) $\times$ Tiny/Mixed Locales (average ~$4.4$) $\times$ Tiny Values ($2$) $\times$ Valid Styles per display ($3$) = **~$3,880$ test cases per file**.
+    *   **Split**: Split into **4 files** by `CurrencyDisplay` (`symbol`, `narrow`, `code`, `name`), excluding `noCurrency` (e.g., `currencies_symbol_modern_currencies.tsv`).
+    *   **Purpose**: Validation of rare currency formatting and symbol rendering.
+3.  **Extended Modern Locales (`currencies_modern_locales.tsv`)**
+    *   **Combinations**: Extended Locales (~$120$) $\times$ Tiny/Mixed Currencies (average ~$3$) $\times$ Tiny Values ($2$) $\times$ Valid Styles ($12$, excluding `noCurrency`) = **~$8,750$ test cases**.
+    *   **Consolidation**: Consolidated into a **single file** as it remains safely under the 10,000-line limit.
+    *   **Purpose**: Thorough coverage of locale-specific formatting rules.
+4.  **Extended Numbers (`currencies_[display]_extended_numbers.tsv`)**
+    *   **Combinations**: Tiny Locales ($3$) $\times$ Tiny Currencies ($2$) $\times$ Extended Numbers (~$140$) $\times$ Valid Styles per display ($3$) = **$2,520$ test cases per file**.
+    *   **Split**: Split into **4 files** by `CurrencyDisplay` (e.g., `currencies_symbol_extended_numbers.tsv`).
+    *   **Purpose**: Full validation of mathematical scale and rounding behaviors for currencies.
+
