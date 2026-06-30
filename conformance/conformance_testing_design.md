@@ -4,11 +4,11 @@
   }
 </style>
 
-# Design Document: CLDR Conformance Testing for Decimal & Currency Formatting
+# Design Document: CLDR Conformance Test Data for Decimal & Currency Formatting
 
 ## 1. Goal & Philosophy
 
-The primary objective of this conformance testing framework is to validate implementations of the Common Locale Data Repository (CLDR) specifications for decimal and currency formatting. 
+The primary objective of this conformance test data framework is to validate implementations of the Common Locale Data Repository (CLDR) specifications for decimal and currency formatting. 
 
 To achieve this, the design balances two critical needs:
 1. **Robust, Structured Test Data:** Providing comprehensive, machine-readable test cases to verify that formatting implementations strictly adhere to CLDR specifications across various locales, edge cases, and formatting options.
@@ -69,13 +69,13 @@ The `Combinator` is responsible for taking all defined dimensions and orchestrat
 
 #### Combination & Splitting Strategy:
 1.  **Core Test Suite (`core.tsv`):**
-    Generates a Cartesian product of the **Core Sets** of all dimensions. This compact suite is designed to cover approximately **90% of all distinct logic paths and edge cases** (e.g., standard styles across high-signal locales, numbering systems, and representative values) with a minimal footprint. Placed under `decimal/core.tsv` and `currency/core.tsv`.
+    Generates a Cartesian product of the **Core Sets** of all dimensions. This compact suite is designed to cover the vast majority of common logic paths and edge cases (e.g., standard styles across high-signal locales, numbering systems, and representative values) with a minimal footprint. Placed under `decimal/core.tsv` and `currency/core.tsv`.
 2.  **Extended Locales Suite (`currencies_modern_locales.tsv` / `decimal/mod_loc.tsv`):**
     Pairs the **Extended Modern Locales** set with other dimensions. For currency, it uses the **Mixing Approach** (combining Tiny Currencies, the locale's default currency, and a stable random currency) to verify language-specific rules across the long tail.
 3.  **Extended Numbers Suite (`[display]_ext_num.tsv` / `decimal/ext_num.tsv`):**
     Pairs the **Extended Numbers** set (exhaustive powers of 10, rounding edge cases) with the Core/Tiny dimensions to verify mathematical precision and scale transitions.
 4.  **Extended Numbering Systems Suite (`ext_ns.tsv` / `decimal/ext_ns.tsv`):**
-    Pairs the **Extended Numbering Systems** set (e.g., Devanagari, Bengali digits) with Core dimensions to verify digit shape rendering across scripts.
+    Pairs the **Extended Numbering Systems** set (e.g., Devanagari) with Core dimensions to verify digit shape rendering across scripts.
 5.  **Extended Currencies Suite (`[display]_modern_currencies.tsv`):**
     Pairs the **Extended Modern Currencies** set with other dimensions using the **Mixing Approach** (combining Tiny Locales, the currency's representative locale, and a stable random locale) to verify rare currency symbol rendering, ISO codes, and custom decimal rules.
 6.  **Deduplication:** Extended sets strictly exclude values already present in the core sets to prevent redundant test cases.
@@ -124,6 +124,15 @@ During the implementation of the Mixing Approach, we discovered a systematic bug
 *   **The Workaround**: To prevent the generator from crashing while maintaining maximum possible coverage, the `generateTestCases` method dynamically inspects the resolved `CLDRFile` for the target locale. If a currency-specific pattern is explicitly defined (i.e., the path `//ldml/numbers/currencies/currency[@type="..."]/pattern[@type="standard"]` is not null), we **skip** generating the `NAME` display style test cases for that specific locale/currency combination.
 *   **Impact**: Only a tiny handful of high-risk combinations (e.g., `tr`+`TRY`+`NAME`) are omitted from the test data, ensuring the suite remains executable and robust.
 
+### 2.5. Handling Invalid Combinations
+
+To ensure the generated test suites only contain valid and executable test cases, the generator explicitly disallows and filters out invalid combinations of dimensions. This is handled in two ways:
+
+1.  **Exclusion from Dimension Values:** If a value is universally invalid or unsupported by CLDR, it is excluded from the dimension definition itself. For example, `long` compact currency is not supported by CLDR, so `CurrencyFormatLength` only defines `STANDARD` and `SHORT`.
+2.  **Explicit Style Pairing (Filtering):** For dimensions that are valid individually but invalid when combined, the generator uses explicit allowlists of styles instead of a naive Cartesian product.
+    *   **Decimal:** `PERCENT` and `SCIENTIFIC` formats are only paired with `EMPTY` format length. `SHORT` and `LONG` lengths are only paired with `DECIMAL` format.
+    *   **Currency:** `SHORT` format length is only paired with `STANDARD` format type (accounting compact currency is not supported/generated).
+
 ---
 
 ## 3. Decimal Formatting Dimensions
@@ -133,7 +142,7 @@ This section details the dimensions implemented in the decimal formatting test g
 | Dimension Column | Explanation | Core Set | Extended Set | Default Value / Behavior if Empty |
 | :--- | :--- | :--- | :--- | :--- |
 | `locale` <br> **Java Name:** `Locale` | The locale identifier determines the linguistic and regional formatting rules (e.g., decimal separator, grouping separator, digit symbols). | `ar` (Arabic RTL, Latin digits)<br>`ar_EG` (Arabic Egypt, Eastern Arabic digits)<br>`bn` (Bengali LTR, Bengali digits, Indian grouping)<br>`de` (German, comma/dot separators)<br>`de_CH` (German Swiss, apostrophe separator)<br>`en` (English LTR, dot/comma separators)<br>`ja` (Japanese, 4-digit grouping)<br>`pt_PT` (Portuguese, space separator)<br>`ru` (Russian, Cyrillic script, complex plurals) | All other modern CLDR locales | `en` |
-| `number_system` <br> **Java Name:** `NumberSystem` | Defines the digit set and numeric rules (e.g. Latin digits, Arabic-Indic digits, or Devanagari digits). | `empty` (Uses locale default digits) <br>`latn` (Latin digits: 0-9)<br>`arab` (Eastern Arabic-Indic digits: ٠-٩) | `deva` (Devanagari digits)<br>`beng` (Bengali digits) | `empty` (Resolves to locale's default numbering system) |
+| `number_system` <br> **Java Name:** `NumberSystem` | Defines the digit set and numeric rules (e.g. Latin digits, Arabic-Indic digits, or Devanagari digits). | `empty` (Uses locale default digits) <br>`latn` (Latin digits: 0-9)<br>`arab` (Eastern Arabic-Indic digits: ٠-٩)<br>`beng` (Bengali digits) | `deva` (Devanagari digits) | `empty` (Resolves to locale's default numbering system) |
 | `number_format` <br> **Java Name:** `NumberFormat` | Specifies the core format pattern type to apply: standard decimal, percent representation, or scientific notation. | `decimal` (Standard decimal)<br>`percent` (Percentage, scaled $\times 100$)<br>`scientific` (Scientific/exponential notation) | *None* (Dimension is fully covered) | `decimal` |
 | `decimal_format_length` <br> **Java Name:** `DecimalFormatLength` | Specifies the format length style, allowing compact representations of numbers (e.g. 1.2K or 1.2 million). | `empty` (Standard formatting, represented as `""`) <br>`short` (Compact short, e.g. 1.2K)<br>`long` (Compact long, e.g. 1.2 thousand) | *None* (Dimension is fully covered) | `empty` (Standard decimal formatting) |
 | `value` <br> **Java Name:** `Value` | The input numeric value (represented as a standard double) to be formatted. | `0.0`, `1.2`, `0.00831765`<br>`1234565.0`, `-1230.05` | Comprehensive mathematical scale:<br>- Powers of 10 ($10^{-6}$ to $10^{12}$)<br>- Multiples ($1.5 \times 10^i$, $5 \times 10^i$)<br>- Edge cases: `12.0`, `123.0`, `1234.56`, `1234567.0`, `0.000123`, `-0.0`, `0.5`, `1.5`, `2.5`, `3.5`, `0.125`, `0.135`, `999.9`, `999999.9`<br>- Negatives of all the above. | *Mandatory* (No default) |
@@ -143,6 +152,12 @@ This section details the dimensions implemented in the decimal formatting test g
 | `sign_display` <br> **Java Name:** `SignDisplay` | Controls when the positive or negative sign is displayed. | `auto` (Shows sign for negatives only)<br>`always` (Always shows sign) | `never` (Hides sign entirely)<br>`except_zero` (Shows sign for non-zero values) | `auto` |
 | `min_integer_digits` <br> **Java Name:** `MinIntegerDigits` | Controls the minimum number of digits displayed to the left of the decimal separator, padding with leading zeros if necessary. | `1` (Default, no padding) | `3` (Pads to 3 digits, e.g., `005`) | `1` |
 | `decimal_separator_display` <br> **Java Name:** `DecimalSeparatorDisplay` | Controls whether the decimal separator is shown when the fractional part is empty. | `auto` (Hides separator if no fraction)<br>`always` (Always shows decimal separator) | `always` | `auto` |
+
+> [!NOTE]
+> While this design specifies using empty cells to represent default values for all applicable dimensions, the current implementation only applies this to:
+> *   Decimal: `decimal_format_length`
+> *   Currency: `currency`, `currency_format_length`, `currency_format_type`, and `currency_display`
+> Other dimensions with defaults (like `grouping_strategy`, `rounding_mode`, etc.) are not yet implemented in the generator code. Future implementations of these dimensions should adhere to this design.
 
 ### 3.1. Detailed Dimension References
 
@@ -422,12 +437,11 @@ public final class GenerateDecimalFormatTestData {
         }
 
         public static final ImmutableSet<NumberSystem> CORE_NUMBER_SYSTEMS =
-                ImmutableSet.of(NumberSystem.EMPTY, NumberSystem.LATN, NumberSystem.ARAB);
+                ImmutableSet.of(NumberSystem.EMPTY, NumberSystem.LATN, NumberSystem.ARAB, NumberSystem.BENG);
 
         public static Set<NumberSystem> getExtendedNumberSystems() {
             Set<NumberSystem> extended = new TreeSet<>();
             extended.add(NumberSystem.DEVA);
-            extended.add(NumberSystem.BENG);
             return extended;
         }
 
@@ -617,9 +631,9 @@ Currency formatting inherits several dimensions from Decimal formatting, but int
 | :--- | :--- | :--- | :--- | :--- |
 | `locale` <br> **Java Name:** `Locale` | The locale identifier determines the linguistic and regional formatting rules (e.g., currency symbol placement, decimal separator, grouping separator, digit symbols, spacing between currency symbol and number). | `ar` (Arabic RTL, Latin digits)<br>`ar_EG` (Arabic Egypt, Eastern Arabic digits)<br>`bn` (Bengali LTR, Bengali digits, Indian grouping)<br>`de` (German, comma/dot separators)<br>`de_CH` (German Swiss, apostrophe separator)<br>`en` (English LTR, dot/comma separators)<br>`ja` (Japanese, CJK myriad grouping)<br>`pt_PT` (Portuguese, space separator)<br>`ru` (Russian, Cyrillic script, complex plurals) | All other modern CLDR locales | `en` |
 | `currency` <br> **Java Name:** `Currency` | The ISO 4217 three-letter code of the currency to format. If empty, formats as a standard decimal/accounting number without a currency unit. | `USD` (Standard 2-decimal)<br>`EUR` (Standard 2-decimal, European spacing)<br>`JPY` (0-decimal currency)<br>`RUB` (Cyrillic Ruble, complex plurals)<br>`EGP` (Egyptian Pound, RTL Arabic context)<br>`empty` (Omitted, represented as `""`) | All other active legal-tender ISO 4217 currency codes | `empty` (Omitted) |
-| `currency_format_length` <br> **Java Name:** `CurrencyFormatLength` | Controls the overall formatting length style (standard or compact short). <br> *Note: Compact long is not supported for currency in CLDR.* | `standard` (Standard currency formatting)<br>`short` (Compact short currency style: e.g. $1.2K) | *None* (Dimension is fully covered) | `standard` |
-| `currency_format_type` <br> **Java Name:** `CurrencyFormatType` | Controls the formatting style type (standard or accounting with parentheses for negatives). | `standard` (Standard currency formatting)<br>`accounting` (Accounting style: uses parenthesis for negatives) | *None* (Dimension is fully covered) | `standard` |
-| `currency_display` <br> **Java Name:** `CurrencyDisplay` | Controls how the currency unit itself is represented within the formatted string (symbol, narrow symbol, ISO code, full plural name, or hidden/no currency). | `symbol` (e.g. $1.00)<br>`narrowSymbol` (e.g. narrow variant)<br>`code` (ISO code, e.g. USD 1.00)<br>`name` (Plural name, e.g. 1.00 US dollar)<br>`noCurrency` (Hides symbol, e.g. 1.00) | *None* (Dimension is fully covered) | `symbol` |
+| `currency_format_length` <br> **Java Name:** `CurrencyFormatLength` | Controls the overall formatting length style (standard or compact short). <br> *Note: Compact long is not supported for currency in CLDR.* | `empty` (Uses default length)<br>`standard` (Standard currency formatting)<br>`short` (Compact short currency style: e.g. $1.2K) | *None* (Dimension is fully covered) | `standard` |
+| `currency_format_type` <br> **Java Name:** `CurrencyFormatType` | Controls the formatting style type (standard or accounting with parentheses for negatives). | `empty` (Uses default type)<br>`standard` (Standard currency formatting)<br>`accounting` (Accounting style: uses parenthesis for negatives) | *None* (Dimension is fully covered) | `standard` |
+| `currency_display` <br> **Java Name:** `CurrencyDisplay` | Controls how the currency unit itself is represented within the formatted string (symbol, narrow symbol, ISO code, full plural name, or hidden/no currency). | `empty` (Uses default display)<br>`symbol` (e.g. $1.00)<br>`narrowSymbol` (e.g. narrow variant)<br>`code` (ISO code, e.g. USD 1.00)<br>`name` (Plural name, e.g. 1.00 US dollar)<br>`noCurrency` (Hides symbol, e.g. 1.00) | *None* (Dimension is fully covered) | `symbol` |
 | `input` <br> **Java Name:** `Number` | The input numeric currency amount (represented as a standard double) to be formatted. | `0.0`, `1.2`, `0.00831765`<br>`1234565.0`, `-1230.05` | Comprehensive mathematical scale:<br>- Powers of 10 ($10^{-6}$ to $10^{12}$)<br>- Multiples ($1.5 \times 10^i$, $5 \times 10^i$)<br>- Edge cases: `12.0`, `123.0`, `1234.56`, `1234567.0`, `0.000123`, `-0.0`, `0.5`, `1.5`, `2.5`, `3.5`, `0.125`, `0.135`, `999.9`, `999999.9`<br>- Negatives of all the above. | *Mandatory* (No default) |
 | `currency_usage` <br> **Java Name:** `CurrencyUsage` | Specifies the transaction usage context, determining if standard electronic rounding or cash rounding rules apply. | `standard` (Standard electronic rounding)<br>`cash` (Cash rounding based on circulating coins) | *None* (Dimension is fully covered) | `standard` |
 | `grouping_strategy` <br> **Java Name:** `GroupingStrategy` | Controls the application of digit grouping separators. | `auto` (Uses locale default grouping)<br>`off` (Disables grouping entirely) | `min2` (Groups only if 2+ digits in first group)<br>`thousand` (Forces 3-digit grouping) | `auto` |
