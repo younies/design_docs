@@ -83,6 +83,9 @@ impl CurrencyFormatter<Decimal> {
 
     /// Creates a currency formatter for narrow formatting.
     pub fn try_new_narrow(...) -> Result<Self, DataError>;
+
+    /// Creates a currency formatter that formats numbers without currency symbols.
+    pub fn try_new_no_currency(...) -> Result<Self, DataError>;
 }
 
 impl CurrencyFormatter<Scientific> {
