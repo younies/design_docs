@@ -125,19 +125,15 @@ By extending the Unified Numeric Engine to units, compact unit formatting inheri
 
 ## 4. Proposal & Architectural Actions
 
-To solve these deficiencies and establish a future-proof formatting architecture, we propose three concrete actions:
+To solve the existing data deficiencies and establish a future-proof formatting architecture, we propose two distinct, coordinated solutions for Currency and Measurement Units:
 
-### Action 1: Integrate Decimal Formatting Data as Primary Source & Fallback for Currency
-* **Mechanism**: Recognize Decimal Formatting Data as the authoritative engine for all number formatting (both non-compact and compact). For compact currencies, use compact decimal formatting data (`decimalFormatLength[@type="short"|"long"]`) as the primary engine and fallback. The compact decimal value (including its literal affixes like "K", "M", "thousand", or "million") is dynamically interpolated into the locale's standard or accounting currency pattern (`currencyFormat[@type="standard"|"accounting"]`), leveraging the fact that their integer and number parts are fundamentally identical.
-* **Outcome**: Eliminates redundant number formatting logic in non-compact currency formatting, automatically achieves 100% coverage for short compact currency across all locales, and introduces **long compact currency** support out-of-the-box with zero new locale data.
-
-### Action 2: Extend Algorithmic Synthesis to Units & Compact Units
-* **Mechanism**: Apply the exact same pattern-gluing architecture to measurement units. Compact decimal strings will be combined with `unitPattern` templates, respecting plural categories and grammatical case/gender rules.
-* **Outcome**: Unlocks short and long compact unit formatting (e.g., `3M km`, `3 million kilometers`) across all supported locales without requiring translators to maintain powers-of-10 unit matrices.
-
-### Action 3: Modernize TR35 Fallback Specification for Compact Currency
-* **Current TR35 Spec**: Unicode Technical Standard #35 (LDML) currently suggests that if explicit compact currency formatting data does not exist for a locale, implementations should fall back to simple (non-compact) standard currency formatting.
-* **Proposed Amendment**: Update TR35 to specify that **algorithmic synthesis from compact decimal patterns** is the official fallback (and recommended primary mechanism) when explicit compact currency patterns are absent. 
+### 4.1 Proposal: Currency Formatting Architecture & TR35 Modernization
+1. **Integrate Decimal Formatting Data as the Core Engine**:
+   * **Mechanism**: Recognize Decimal Formatting Data as the authoritative engine for all number formatting (both non-compact and compact). For compact currencies, use compact decimal formatting data (`decimalFormatLength[@type="short"|"long"]`) as the primary engine and fallback. The compact decimal value (including its literal affixes like "K", "M", "thousand", or "million") is dynamically interpolated into the locale's standard or accounting currency pattern (`currencyFormat[@type="standard"|"accounting"]`), leveraging the fact that their integer and number parts are fundamentally identical.
+   * **Outcome**: Eliminates redundant number formatting logic in non-compact currency formatting, automatically achieves 100% coverage for short compact currency across all locales, and introduces **long compact currency** support out-of-the-box with zero new locale data.
+2. **Modernize TR35 Fallback Specification**:
+   * **Current TR35 Spec**: Unicode Technical Standard #35 (LDML) currently suggests that if explicit compact currency formatting data does not exist for a locale, implementations should fall back to simple (non-compact) standard currency formatting.
+   * **Proposed Amendment**: Update TR35 to specify that **algorithmic synthesis from compact decimal patterns** is the official fallback (and recommended primary mechanism) when explicit compact currency patterns are absent.
 
 ```mermaid
 flowchart TD
@@ -151,6 +147,13 @@ flowchart TD
 
 > [!IMPORTANT]
 > By changing the TR35 fallback recommendation from *simple currency formatting* to *algorithmic compact synthesis*, we ensure that users always receive abbreviated, human-readable numbers (e.g., `$10K` instead of `$10,000.00`) even in locales that lack explicit compact currency patterns.
+
+### 4.2 Proposal: Measurement Unit Architecture & Synthesis
+1. **Extend Algorithmic Synthesis to Units & Compact Units**:
+   * **Mechanism**: Apply the exact same pattern-gluing architecture to measurement units. Because there is zero legacy compact data in CLDR XML/DTDs, the unit synthesis model is pure-play: compact decimal strings from `decimalFormatLength[@type="short"|"long"]` will be dynamically combined with localized `unitPattern` templates, respecting plural categories and grammatical case/gender rules.
+   * **Outcome**: Unlocks short and long compact unit formatting (e.g., `3M km`, `3 million kilometers`) across all supported locales without requiring translators to maintain powers-of-10 unit matrices.
+2. **Immediate Test Suite Activation**:
+   * Enabling this algorithmic pipeline allows immediate activation and verification of the currently commented-out `Compact-Short+Unit` columns in CLDR inspection tools.
 
 ---
 
