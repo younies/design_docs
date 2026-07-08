@@ -11,7 +11,6 @@ Historically, dimension formatters (currency and units) have often been modeled 
 1. **Standard (Non-Compact) Currency Formatting**: Directly inherits integer grouping and digit layout from standard decimal patterns, applying only currency-specific fraction digits, rounding rules, and symbol affixes (`¤`). This eliminates redundant numerical pattern parsing and storage.
 2. **Compact Currency & Unit Formatting (Algorithmic Synthesis)**: Replaces fragmented and missing explicit compact patterns with an algorithmic synthesis pipeline. By dynamically interpolating **Compact Decimal Formatting Data** (`decimalFormatLength[@type="short"|"long"]`) into currency and unit layout templates, we achieve 100% short compact coverage and unlock **long compact currency** and **compact units** out of the box with zero new locale data.
 
-```mermaid
 ### 1.1 Architecture Diagram: Currency Formatting (Standard & Compact)
 This diagram illustrates how the authoritative Decimal Formatter engine powers standard currency formatting, short compact currency, and long compact currency without redundant numerical formatting rules.
 
@@ -75,7 +74,6 @@ flowchart TD
     UP_Short -->|"Provides abbreviation template"| Out_CompShortUnit
 
     CompDecU -->|"Provides scaled number & compact affix"| Out_CompShortUnit & Out_CompLongUnit
-```
 ```
 
 ---
