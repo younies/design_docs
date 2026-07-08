@@ -16,6 +16,38 @@ graph TD
     DF --> CCF["CurrencyFormatter<br/>&lt;Compact&gt;"]
 ```
 
+## Unified Architecture: Decimal Formatter as the Engine
+
+*Related PRs & Proposals: [#8182](https://github.com/unicode-org/icu4x/pull/8182) (Initial generic design), [#8189](https://github.com/unicode-org/icu4x/pull/8189) (Unification under AbstractFormatter), and [CLDR-19617](https://unicode-org.atlassian.net/browse/CLDR-19617) (Compact Currency / Units pattern gluing).*
+
+To minimize code duplication, reduce binary size, and simplify configuration, ICU4X adopts an architecture where the decimal formatter acts as the foundational engine that dominates and powers all higher-level dimension formatters (such as currency formatting, and in the future, unit formatting).
+
+Instead of each dimension formatter implementing its own number formatting logic or storing redundant data structures (such as grouping rules, symbols, and plural rules), higher-level formatters wrap an underlying numeric engine that implements the `AbstractFormatter` trait.
+
+```mermaid
+graph TD
+    subgraph Numeric Engine ["Numeric Engine (icu_decimal)"]
+        AF["trait AbstractFormatter (Sealed)"]
+        DF["DecimalFormatter"] ---|implements| AF
+        CDF["CompactDecimalFormatter"] ---|implements| AF
+        SDF["ScientificDecimalFormatter (Future)"] ---|implements| AF
+    end
+
+    subgraph Dimension Formatters ["Dimension Formatters"]
+        CF["CurrencyFormatter&lt;V: AbstractFormatter&gt;"]
+        UF["UnitsFormatter&lt;V: AbstractFormatter&gt; (Future)"]
+    end
+
+    AF -->|powers| CF
+    AF -->|powers| UF
+```
+
+### Benefits of the Engine Approach
+1. **Zero Duplication**: `CurrencyFormatter` and `UnitsFormatter` do not store or reimplement compact decimal rules, scientific notation algorithms, or standard grouping formatting. They delegate 100% of numeric value formatting to the underlying `AbstractFormatter`.
+2. **Alignment with CLDR-19617**: This architecture directly prepares ICU4X for [CLDR-19617](https://unicode-org.atlassian.net/browse/CLDR-19617) (Compact Currency / Units pattern gluing). Under CLDR-19617, compact numbers are formatted independently and glued into currency or unit placeholder patterns, which maps 1:1 with delegating value formatting to `CompactDecimalFormatter` and interpolating the result into the dimension's placeholder pattern.
+3. **Future Extensibility (Units Formatter)**: When building `UnitsFormatter`, no new compact or decimal formatting logic needs to be written. It will simply be defined as `pub struct UnitsFormatter<V: AbstractFormatter> { value_formatter: V, units_data: UnitsData }`.
+4. **SemVer & API Stability**: `AbstractFormatter` uses the **Sealed Trait Pattern**, preventing downstream crates from implementing it. This allows the ICU4X team to evolve internal numeric helper methods without breaking external code.
+
 ## Currency Format
 
 This section discusses the design options for currency formatting, including the requirements and the proposed designs to address them.
@@ -142,6 +174,45 @@ pub struct ScientificCurrencyFormatter;
 
 // Scientific long name formatter
 pub struct LongScientificCurrencyFormatter;
+```
+
+#### Option 3: Unified CurrencyFormatter<V: AbstractFormatter> (Selected)
+
+*Proposed and implemented in PRs [#8182](https://github.com/unicode-org/icu4x/pull/8182) and [#8189](https://github.com/unicode-org/icu4x/pull/8189), in alignment with [CLDR-19617](https://unicode-org.atlassian.net/browse/CLDR-19617).*
+
+In this selected design, we merge all currency formatters into a single generic type `CurrencyFormatter<V>`, where `V` is constrained by `AbstractFormatter` from `icu_decimal`. This replaces marker traits with actual functional formatter engines.
+
+```mermaid
+graph TD
+    CF["CurrencyFormatter&lt;V: AbstractFormatter&gt;"] --> Standard["V = DecimalFormatter"]
+    CF --> Compact["V = CompactDecimalFormatter"]
+
+    Standard --> StdCons["Standard Constructors:<br>- try_new_short()<br>- try_new_narrow()<br>- try_new_long()"]
+    Compact --> CompCons["Compact Constructors:<br>- try_new_compact_short()<br>- try_new_compact_narrow()<br>- try_new_compact_long()"]
+```
+
+```rust
+use icu_decimal::{AbstractFormatter, CompactDecimalFormatter, DecimalFormatter};
+
+/// Unified currency formatter powered by an underlying AbstractFormatter.
+pub struct CurrencyFormatter<V: AbstractFormatter> {
+    value_formatter: V,
+    currency_data: CurrencyFormatterData,
+}
+
+// Standard currency formatting (wraps DecimalFormatter)
+impl CurrencyFormatter<DecimalFormatter> {
+    pub fn try_new_short(...) -> Result<Self, DataError>;
+    pub fn try_new_narrow(...) -> Result<Self, DataError>;
+    pub fn try_new_long(...) -> Result<Self, DataError>;
+}
+
+// Compact currency formatting (wraps CompactDecimalFormatter)
+impl CurrencyFormatter<CompactDecimalFormatter> {
+    pub fn try_new_compact_short(...) -> Result<Self, DataError>;
+    pub fn try_new_compact_narrow(...) -> Result<Self, DataError>;
+    pub fn try_new_compact_long(...) -> Result<Self, DataError>;
+}
 ```
 
 <!--stackedit_data:
