@@ -82,8 +82,8 @@ To solve these deficiencies and establish a future-proof formatting architecture
 ```mermaid
 flowchart TD
     Req["Request: Format Currency in Compact Style (Short/Long)"] --> CheckExplicit{"Explicit Currency Compact<br/>Pattern Exists?"}
-    CheckExplicit -->|Yes (Legacy/Override)| UseExplicit["Use Explicit Currency Compact Pattern"]
-    CheckExplicit -->|No (Default/Proposed TR35)| Synth["Algorithmic Synthesis:<br/>1. Format number via Compact Decimal Engine<br/>2. Interpolate into Standard/Accounting Currency Pattern<br/>3. Resolve Spacing & Plural Rules"]
+    CheckExplicit -->|"Yes - Legacy or Override"| UseExplicit["Use Explicit Currency Compact Pattern"]
+    CheckExplicit -->|"No - Default or Proposed TR35"| Synth["Algorithmic Synthesis:<br/>1. Format number via Compact Decimal Engine<br/>2. Interpolate into Standard/Accounting Currency Pattern<br/>3. Resolve Spacing & Plural Rules"]
     
     UseExplicit --> Output["Formatted Compact Currency String"]
     Synth --> Output
