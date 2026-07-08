@@ -78,7 +78,7 @@ flowchart TD
 
 ---
 
-## 2. Current Status & Problem Statement
+## 2. Currency Architecture, Analysis & Investigation
 
 ### 2.1 Standard (Normal) Currency Formatting
 In standard, non-compact currency formatting (e.g., `$1,234.56`), the core numerical pattern (grouping separators, integer digit rules, and decimal layout) matches standard decimal formatting perfectly. To format a normal currency string, an implementation does not need a distinct number formatting engine; it simply inherits the standard decimal pattern and adjusts:
@@ -96,19 +96,34 @@ An investigation into standard (**non-compact**) decimal patterns and currency p
 2. **Number Part Uniformity Across Currency Patterns**: For any given locale, the numerical part of the pattern is identical across all currency formatting variations (standard vs. accounting, or different currency styles). Where accounting patterns differ (e.g., `#,##0.00 ¤;(#,##0.00 ¤)`), the difference is strictly in the surrounding negative affixes (parentheses), while the underlying number formatting structure remains completely unchanged.
 3. **Implications for Core Architecture**: Because the integer and number parts are identical even in non-compact formatting, currency formatting does not need its own separate numerical formatting logic or grouping data. The decimal formatter is already the natural, authoritative engine for all number formatting (both compact and non-compact). The rare discrepancies observed in certain locales appear to be legacy data bugs or accidental inconsistencies rather than intentional typographic distinctions.
 
----
-
-## 3. Investigation & Codebase Findings
-
-Our investigation across the CLDR repository, DTD definitions, and tooling uncovered several critical data points that validate this architectural direction:
-
-1. **Zero Data for Compact Units**: A comprehensive search of CLDR XML data and DTDs confirmed that **there is zero explicit locale data for compact units (short or long)**. Units only define grammatical length patterns (`unitLength[@type="long"|"short"|"narrow"]` with `unitPattern`). Therefore, algorithmic synthesis is not just an optimization for units—it is the *only* viable path forward without causing an exponential explosion in locale data size.
-2. **Pending Tooling Capabilities**: In [VerifyCompactNumbers.java](file:///usr/local/google/home/younies/i18n/cldr/google3/third_party/cldr/tools/cldr-code/src/main/java/org/unicode/cldr/test/VerifyCompactNumbers.java), test columns for `Compact-Short+Unit`, `Compact-Long+Currency`, and `Compact-Long+Currency-Long` are explicitly commented out due to the historical lack of a formal synthesis pipeline.
-3. **Alignment with Modern Formatter Architectures**: As documented in [number_formatter.md](file:///usr/local/google/home/younies/i18n/design_docs/number_formatter.md), next-generation formatters (such as ICU4X) are already structured around a layered architecture where the Decimal Formatter acts as the underlying engine powering Currency and Unit formatters.
+### 2.4 Currency Codebase & Tooling Investigation
+Our inspection of the CLDR toolchain and test suite confirms the need for this unified currency model:
+* **Commented-Out Tooling Capabilities**: In [VerifyCompactNumbers.java](file:///usr/local/google/home/younies/i18n/cldr/google3/third_party/cldr/tools/cldr-code/src/main/java/org/unicode/cldr/test/VerifyCompactNumbers.java), test columns for `Compact-Long+Currency` and `Compact-Long+Currency-Long` are explicitly commented out due to the historical lack of a formal synthesis pipeline and data model.
+* **Prototype Alignment**: Recent efforts in PRs like [#5862](https://github.com/unicode-org/cldr/pull/5862) demonstrate that algorithmic gluing of decimal formats with currency patterns successfully resolves existing short compact gaps without introducing new locale data.
 
 ---
 
-## 4. Proposal & Actions
+## 3. Measurement Unit Architecture & Synthesis
+
+### 3.1 Standard vs. Compact Unit Formatting
+Measurement unit formatting (e.g., `15 kilometers` or `15 km`) has traditionally relied on combining standard decimal numbers with localized grammatical unit patterns (`unitLength[@type="long"|"short"|"narrow"]` with `unitPattern`). However, modern interfaces increasingly require **compact unit formatting** (e.g., `15M km` or `15 million kilometers`) to display large scientific or technical quantities cleanly in constrained UI spaces.
+
+### 3.2 Absence of Compact Unit Data & Why No Investigation Is Needed
+Unlike currency formatting—where an investigation into explicit short compact patterns was necessary to identify legacy inconsistencies and redundancies—**the units domain requires no legacy data reconciliation or investigation**. 
+
+A comprehensive search of CLDR XML data and DTDs confirmed that **there is zero explicit locale data for compact units (short or long) anywhere in CLDR**. Units only define grammatical length templates (`unitPattern`). Because no explicit powers-of-10 compact unit tables exist in locale data:
+1. **Zero Legacy Debt**: There are no redundant or conflicting compact unit patterns to deprecate or clean up.
+2. **Pure-Play Synthesis**: Algorithmic synthesis is not merely an optimization for units—it is the *only* architectural mechanism capable of supporting compact units without causing an exponential explosion in locale data size.
+
+### 3.3 Unit Synthesis Model
+By extending the Unified Numeric Engine to units, compact unit formatting inherits 100% of its numerical scaling and affixes from Compact Decimal Formatting Data (`decimalFormatLength[@type="short"|"long"]`). The synthesis engine simply:
+1. Formats the numeric quantity using the underlying Compact Decimal Formatter (yielding a string like `1.5M` or `1.5 million` and a corresponding plural category such as `other`).
+2. Interpolates that compacted string into the appropriate `unitPattern` template (e.g., `{0} km` -> `1.5M km`, or `{0} kilometers` -> `1.5 million kilometers`), respecting localized grammatical case and gender rules.
+3. In [VerifyCompactNumbers.java](file:///usr/local/google/home/younies/i18n/cldr/google3/third_party/cldr/tools/cldr-code/src/main/java/org/unicode/cldr/test/VerifyCompactNumbers.java), the currently commented-out test column `Compact-Short+Unit` can be activated immediately once this engine pipeline is enabled.
+
+---
+
+## 4. Proposal & Architectural Actions
 
 To solve these deficiencies and establish a future-proof formatting architecture, we propose three concrete actions:
 
