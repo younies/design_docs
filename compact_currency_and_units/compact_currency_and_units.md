@@ -80,11 +80,17 @@ flowchart TD
 
 ## 2. Current Status & Problem Statement
 
-### 2.1 Compact Currency Data Deficiencies
+### 2.1 Standard (Normal) Currency Formatting
+In standard, non-compact currency formatting (e.g., `$1,234.56`), the core numerical pattern (grouping separators, integer digit rules, and decimal layout) matches standard decimal formatting perfectly. To format a normal currency string, an implementation does not need a distinct number formatting engine; it simply inherits the standard decimal pattern and adjusts:
+1. **Fraction Digits & Rounding**: Applying currency-specific minor units (e.g., 2 decimal places for USD/EUR, 0 for JPY, 3 for BHD) and rounding rules (e.g., cash rounding vs. financial rounding).
+2. **Magnitude & Affixes**: Applying any currency scaling and attaching the localized symbol or display name (`¤` or `¤¤¤`) according to the layout template.
+This establishes that even before compact formatting is considered, currency formatting is fundamentally just a parameterized derivation of decimal formatting.
+
+### 2.2 Compact Currency Data Deficiencies
 * **Compact Currency Short**: Existing LDML data for short compact currency (`currencyFormatLength[@type="short"]`) is severely inconsistent. It is partially populated in some locales and completely absent in many others. Where present, it largely duplicates the numerical scaling and affix logic already defined in compact decimal formats.
 * **Compact Currency Long**: There is **zero locale data** in CLDR for long compact currency (e.g., `$10 million` or `10 million US dollars`). Downstream formatters currently have no standardized way to produce long compact currency strings.
 
-### 2.2 Non-Compact & Compact Pattern Consistency Analysis
+### 2.3 Non-Compact & Compact Pattern Consistency Analysis
 An investigation into standard (**non-compact**) decimal patterns and currency patterns across LDML reveals profound structural identity:
 1. **Integer Part Identity (Decimal vs. Currency in Non-Compact Formatting)**: In standard (non-compact) formatting, the integer portion of currency patterns and decimal patterns (e.g., grouping sizes, primary/secondary grouping like `#,##0` or `#,##,##0`) is identical within a locale. The only difference is that currency patterns specify fraction digits (e.g., `.00`), rounding, or affix symbols (`¤`).
 2. **Number Part Uniformity Across Currency Patterns**: For any given locale, the numerical part of the pattern is identical across all currency formatting variations (standard vs. accounting, or different currency styles). Where accounting patterns differ (e.g., `#,##0.00 ¤;(#,##0.00 ¤)`), the difference is strictly in the surrounding negative affixes (parentheses), while the underlying number formatting structure remains completely unchanged.
