@@ -12,29 +12,70 @@ Historically, dimension formatters (currency and units) have often been modeled 
 2. **Compact Currency & Unit Formatting (Algorithmic Synthesis)**: Replaces fragmented and missing explicit compact patterns with an algorithmic synthesis pipeline. By dynamically interpolating **Compact Decimal Formatting Data** (`decimalFormatLength[@type="short"|"long"]`) into currency and unit layout templates, we achieve 100% short compact coverage and unlock **long compact currency** and **compact units** out of the box with zero new locale data.
 
 ```mermaid
-graph TD
-    subgraph Core LDML Numeric Engine [Authoritative Numeric Engine Data]
-        StdDec["Standard Decimal Data<br/>(grouping & integer patterns)"]
-        CompDec["Compact Decimal Data<br/>(short & long powers of 10)"]
+### 1.1 Architecture Diagram: Currency Formatting (Standard & Compact)
+This diagram illustrates how the authoritative Decimal Formatter engine powers standard currency formatting, short compact currency, and long compact currency without redundant numerical formatting rules.
+
+```mermaid
+flowchart TD
+    subgraph NumericEngine ["1. Authoritative Numeric Engine (Decimal Formatter Data)"]
+        direction LR
+        StdDec["Standard Decimal Data<br/>• Integer grouping (e.g., #,##0)<br/>• Fraction digit rules"]
+        CompDec["Compact Decimal Data<br/>• Powers of 10 scaling<br/>• Literal affixes (e.g., K, M, thousand)"]
     end
 
-    subgraph Dimension Layout Templates [Dimension Layout & Affix Templates]
-        CP["Currency Patterns & Symbols<br/>(standard, accounting, ¤, ¤¤¤)"]
-        UP["Unit Patterns<br/>(unitPattern & grammatical rules)"]
+    subgraph CurrencyTemplates ["2. Currency Layout Templates & Symbols"]
+        direction LR
+        CP_Std["Standard & Accounting Patterns<br/>• e.g., ¤ #,##0.00 or (#,##0.00 ¤)"]
+        CS_Sym["Symbols & Narrow Symbols<br/>• e.g., $, US$, € (¤)"]
+        CS_Name["Currency Display Names<br/>• e.g., US dollars, euros (¤¤¤)"]
     end
 
-    subgraph Unified Formatting Output
-        StdCurr["Standard Currency Formatting<br/>(e.g., $1,234.56)"]
-        CC_Short["Compact Currency Short<br/>(e.g., $10K)"]
-        CC_Long["Compact Currency Long<br/>(e.g., 10 thousand USD)"]
-        CU_Short["Compact Unit Short<br/>(e.g., 10K km)"]
-        CU_Long["Compact Unit Long<br/>(e.g., 10 thousand kilometers)"]
+    subgraph CurrencyOutput ["3. Synthesizable Currency Formats"]
+        direction LR
+        Out_Std["Standard Currency<br/>e.g., $1,234.56"]
+        Out_CompShort["Compact Currency Short<br/>e.g., $12K or 12M €"]
+        Out_CompLong["Compact Currency Long<br/>e.g., 12 thousand US dollars"]
     end
 
-    StdDec --> StdCurr
-    CP --> StdCurr & CC_Short & CC_Long
-    CompDec --> CC_Short & CC_Long & CU_Short & CU_Long
-    UP --> CU_Short & CU_Long
+    StdDec -->|"Provides integer & grouping structure"| Out_Std
+    CP_Std -->|"Provides symbol positioning & decimals"| Out_Std
+    CS_Sym -->|"Provides currency symbol"| Out_Std & Out_CompShort
+
+    CompDec -->|"Provides scaled number & compact affix"| Out_CompShort & Out_CompLong
+    CP_Std -->|"Provides layout rules & spacing"| Out_CompShort
+    CS_Name -->|"Provides pluralized display name"| Out_CompLong
+```
+
+### 1.2 Architecture Diagram: Measurement Units (Standard & Compact)
+This diagram illustrates how the exact same Compact Decimal Engine scales effortlessly to measurement units, unlocking compact unit formatting (short and long) out of the box with zero new locale data.
+
+```mermaid
+flowchart TD
+    subgraph NumericEngineUnits ["1. Authoritative Numeric Engine (Decimal Formatter Data)"]
+        direction LR
+        StdDecU["Standard Decimal Data<br/>• Basic number formatting"]
+        CompDecU["Compact Decimal Data<br/>• Powers of 10 scaling<br/>• Short & long affixes (e.g., K, M, million)"]
+    end
+
+    subgraph UnitTemplates ["2. Measurement Unit Templates & Grammar"]
+        direction LR
+        UP_Short["Short Unit Patterns<br/>• e.g., {0} km, {0} m/s"]
+        UP_Long["Long Unit Patterns & Grammar<br/>• e.g., {0} kilometers<br/>• Plural rules, case & gender alignment"]
+    end
+
+    subgraph UnitOutput ["3. Synthesizable Unit Formats"]
+        direction LR
+        Out_StdUnit["Standard Unit Formatting<br/>e.g., 1,500 kilometers"]
+        Out_CompShortUnit["Compact Unit Short<br/>e.g., 1.5K km"]
+        Out_CompLongUnit["Compact Unit Long<br/>e.g., 1.5 million kilometers"]
+    end
+
+    StdDecU -->|"Provides formatted number"| Out_StdUnit
+    UP_Long -->|"Provides localized name & grammatical case"| Out_StdUnit & Out_CompLongUnit
+    UP_Short -->|"Provides abbreviation template"| Out_CompShortUnit
+
+    CompDecU -->|"Provides scaled number & compact affix"| Out_CompShortUnit & Out_CompLongUnit
+```
 ```
 
 ---
