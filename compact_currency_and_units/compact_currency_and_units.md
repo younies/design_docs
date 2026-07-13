@@ -115,11 +115,15 @@ When formatting currencies across different styles and notations, every currency
      * *Remediation (Tracked by Jira: [CLDR-19629](https://unicode-org.atlassian.net/browse/CLDR-19629))*: Audit and correct all locales where any other currency pattern's numerical part diverges from standard currency, and enforce CheckCLDR integrity rules ensuring numerical part uniformity across all currency pattern styles within a locale.
 
 ##### Case 2: ISO Code + Plain Number (Decimal)
-* **Example**: `USD 1,200.01` or `1,200,000.00 USD`
+* **Example**: `USD 1,200.01` or `EUR 1,200.01` (in `en_US` / `en`)
 * **TR35 Specification & Pattern Selection**: According to **[Unicode Technical Standard #35 (LDML Part 3: Numbers, Section 3.4 Currency Formatting)](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Formatting)**, when formatting with a 3-letter ISO 4217 currency code (`¤¤`), pattern selection follows a strict hierarchy:
   1. **Explicit Alpha-Next-To-Number Pattern**: Check if the locale explicitly defines an `alt="alphaNextToNumber"` pattern (`currencyFormatLength/currencyFormat[@type="standard"]/pattern[@alt="alphaNextToNumber"]`). If present, **this pattern is used**.
   2. **Fallback to Standard Currency Pattern**: If no explicit `alt="alphaNextToNumber"` pattern exists, fall back to the standard currency format pattern (`currencyFormat[@type="standard"]/pattern[@type="standard"]`), replacing the symbol token (`¤`) with the double-currency token (`¤¤`).
-* **TR35 Spacing & Alpha-Next-To-Number Resolution**: Because ISO codes are alphabetic (`USD`, `EUR`), placing them immediately adjacent to digits (as might happen if the standard pattern is `¤#0.00` and `¤` is naively replaced by `¤¤`) yields unreadable strings like `USD1,200.01`. [TR35 Section 3.4](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Formatting) explicitly specifies that formatting engines must ensure appropriate spacing (typically a non-breaking space `\u00A0`) between alphabetic currency codes and adjacent numbers when `alt="alphaNextToNumber"` patterns are absent.
+* **TR35 Spacing & Concrete Examples (`en` Locale)**: In English (`en`), the standard currency pattern is `¤#,##0.00` (no space after `¤`). If an ISO code (`USD`, `EUR`) were naively inserted into this standard pattern, it would produce unreadable collisions like `USD1,200.01` or `EUR1,200.01`. To prevent this:
+  * `en.xml` explicitly defines an `alt="alphaNextToNumber"` pattern with a non-breaking space (`\u00A0`): `¤ #,##0.00`.
+  * When formatting `1,200.01` with `USD`, the `alphaNextToNumber` pattern is selected, yielding `USD 1,200.01` (`USD\u00A01,200.01`).
+  * When formatting `1,200.01` with `EUR`, it yields `EUR 1,200.01` (`EUR\u00A01,200.01`).
+  * [TR35 Section 3.4](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Formatting) ensures that even in locales where `alt="alphaNextToNumber"` is not explicitly defined, formatting engines automatically inject appropriate spacing (`\u00A0`) between alphabetic currency codes and adjacent numbers.
 
 ##### Case 3: Full Name + Plain Number (Decimal)
 * **Example**: `1,200.01 US dollars` or `1,200,000.00 US dollars`
