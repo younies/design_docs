@@ -1,48 +1,47 @@
 # Support Algorithmic Synthesis for Compact Currency and Measurement Units via Unified Numeric Engine (Zero New Locale Data)
 
-*Related Tickets & Documents: [CLDR-19617](https://unicode-org.atlassian.net/browse/CLDR-19617), [PR #5862](https://github.com/unicode-org/cldr/pull/5862), and [ICU4X Number Formatter Design](file:///usr/local/google/home/younies/i18n/design_docs/number_formatter.md).*
+*Master Tracking Ticket & Documents: **[CLDR-19617](https://unicode-org.atlassian.net/browse/CLDR-19617)** (`Support Algorithmic Synthesis for Compact Currency and Measurement Units via Unified Numeric Engine`) tracking sub-tickets **[CLDR-19628](https://unicode-org.atlassian.net/browse/CLDR-19628)**, **[CLDR-19629](https://unicode-org.atlassian.net/browse/CLDR-19629)**, **[CLDR-19631](https://unicode-org.atlassian.net/browse/CLDR-19631)**, **[CLDR-19632](https://unicode-org.atlassian.net/browse/CLDR-19632)**, **[CLDR-19633](https://unicode-org.atlassian.net/browse/CLDR-19633)**, **[CLDR-19634](https://unicode-org.atlassian.net/browse/CLDR-19634)**, **[CLDR-19635](https://unicode-org.atlassian.net/browse/CLDR-19635)**, **[CLDR-19636](https://unicode-org.atlassian.net/browse/CLDR-19636)**, **[CLDR-19637](https://unicode-org.atlassian.net/browse/CLDR-19637)**, and **[CLDR-19638](https://unicode-org.atlassian.net/browse/CLDR-19638)**. Related: [PR #5862](https://github.com/unicode-org/cldr/pull/5862) and [ICU4X Number Formatter Design](file:///usr/local/google/home/younies/i18n/design_docs/number_formatter.md).*
 
 ## 1. Executive Summary & Overview
 
-This document presents a foundational architectural shift in how CLDR and downstream internationalization libraries (ICU, ICU4X, JS Intl) handle **standard currency formatting, compact currency formatting, and measurement units**.
+This document presents a foundational architectural shift in how CLDR and downstream internationalization libraries (ICU, ICU4X, JS Intl) handle **standard currency formatting, compact currency formatting across all 9 presentation cases, and measurement units**.
 
 Historically, currency formatters and unit formatters have often been modeled as standalone systems with distinct formatting rules and redundant pattern data. We propose a **Unified Engine Architecture** that elevates **Decimal Formatting Data** as the authoritative, universal source for all numerical formatting:
 
-1. **Standard (Non-Compact) Currency Formatting**: Directly inherits integer grouping and digit layout from standard decimal patterns, applying only currency-specific fraction digits, rounding rules, and symbol affixes (`¤`). This eliminates redundant numerical pattern parsing and storage.
-2. **Compact Currency & Unit Formatting (Algorithmic Synthesis)**: Replaces fragmented and missing explicit compact patterns with an algorithmic synthesis pipeline. By dynamically interpolating **Compact Decimal Formatting Data** (`decimalFormatLength[@type="short"|"long"]`) into currency and unit layout templates, we achieve 100% short compact coverage and unlock **long compact currency** and **compact units** out of the box with zero new locale data.
+1. **Standard (Non-Compact) Currency Formatting (`Cases 1..3`)**: Directly inherits integer grouping and digit layout from standard decimal patterns, applying only currency-specific fraction digits, rounding rules, and symbol/name affixes (`¤`, `¤¤`, `¤¤¤`). This eliminates redundant numerical pattern parsing and storage.
+2. **Compact Currency (`Cases 4..9`) & Unit Formatting (Algorithmic Synthesis)**: Replaces fragmented, legacy-bugged, and missing explicit compact patterns with an algorithmic gluing pipeline (`92.6% accuracy across 80,000+ evaluated patterns`). By dynamically interpolating **Compact Decimal Formatting Data** (`decimalFormatLength[@type="short"|"long"]`) with standard currency layouts (`alphaNextToNumber`), display names (`displayName`), and grammatical layout templates (`unitPattern`), our engine achieves 100% short compact coverage and unlocks **long compact currency (`$1.2 million`, `1,2 Millionen Euro`)** and **compact units (`1.2M kg`, `1.2 million kilometers`)** globally out of the box with zero new locale data.
 
-### 1.1 Architecture Diagram: Currency Formatting (Standard & Compact)
-This diagram illustrates how the authoritative Decimal Formatter engine powers standard currency formatting, short compact currency, and long compact currency without redundant numerical formatting rules.
+### 1.1 Architecture Diagram: The 9 Currency Formatting Cases (Standard & Compact)
+This diagram illustrates how the authoritative Decimal Formatter engine powers all 9 currency presentation cases (combining Symbols, ISO Codes, and Full Names across Standard, Short Compact, and Long Compact notations) without redundant numerical formatting tables.
 
 ```mermaid
 flowchart TD
     subgraph NumericEngine ["1. Authoritative Numeric Engine (Decimal Formatter Data)"]
         direction LR
         StdDec["Standard Decimal Data<br/>• Integer grouping (e.g., #,##0)<br/>• Fraction digit rules"]
-        CompDec["Compact Decimal Data<br/>• Powers of 10 scaling<br/>• Literal affixes (e.g., K, M, thousand)"]
+        CompDec["Compact Decimal Data<br/>• Powers of 10 scaling<br/>• Short & long affixes (e.g., K, M, million)"]
     end
 
-    subgraph CurrencyTemplates ["2. Currency Layout Templates & Symbols"]
+    subgraph CurrencyTemplates ["2. Currency Layout & Grammatical Templates"]
         direction LR
-        CP_Std["Standard & Accounting Patterns<br/>• e.g., ¤ #,##0.00 or (#,##0.00 ¤)"]
-        CS_Sym["Symbols & Narrow Symbols<br/>• e.g., $, US$, € (¤)"]
-        CS_Name["Currency Display Names<br/>• e.g., US dollars, euros (¤¤¤)"]
+        CP_Std["Standard & Alpha Layouts<br/>• e.g., ¤ #,##0.00 or alphaNextToNumber"]
+        CS_Sym["Symbols & ISO Codes<br/>• Symbols ($ / € - ¤)<br/>• ISO Codes (USD / EUR - ¤¤)"]
+        CS_Name["Display Names & Unit Patterns<br/>• Display Names (US dollars - ¤¤¤)<br/>• Unit Patterns ({0} {1} / {0} de {1})"]
     end
 
-    subgraph CurrencyOutput ["3. Synthesizable Currency Formats"]
+    subgraph CurrencyOutput ["3. Synthesizable Output across All 9 Cases"]
         direction LR
-        Out_Std["Standard Currency<br/>e.g., $1,234.56"]
-        Out_CompShort["Compact Currency Short<br/>e.g., $12K or 12M €"]
-        Out_CompLong["Compact Currency Long<br/>e.g., 12 thousand US dollars"]
+        Out_Std["Standard Currency (Cases 1-3)<br/>• Symbols: $1,234.56<br/>• ISO: USD 1,234.56<br/>• Full Name: 1,234.56 US dollars"]
+        Out_CompShort["Compact Short (Cases 4-6)<br/>• Symbols: $1.2M or 1,2 M €<br/>• ISO: USD 1.2M or 1,2 M EUR<br/>• Full Name: 1.2M US dollars / 1,2 Mio. Euro"]
+        Out_CompLong["Compact Long (Cases 7-9)<br/>• Symbols: $1.2 million / 1,2 Millionen €<br/>• ISO: USD 1.2 million / 1,2 Millionen USD<br/>• Full Name: 1.2 million US dollars"]
     end
 
     StdDec -->|"Provides integer & grouping structure"| Out_Std
-    CP_Std -->|"Provides symbol positioning & decimals"| Out_Std
-    CS_Sym -->|"Provides currency symbol"| Out_Std & Out_CompShort
+    CP_Std -->|"Provides symbol positioning & decimals"| Out_Std & Out_CompShort & Out_CompLong
+    CS_Sym -->|"Provides symbols & ISO codes"| Out_Std & Out_CompShort & Out_CompLong
 
     CompDec -->|"Provides scaled number & compact affix"| Out_CompShort & Out_CompLong
-    CP_Std -->|"Provides layout rules & spacing"| Out_CompShort
-    CS_Name -->|"Provides pluralized display name"| Out_CompLong
+    CS_Name -->|"Provides pluralized names & partitive de"| Out_Std & Out_CompShort & Out_CompLong
 ```
 
 ### 1.2 Architecture Diagram: Measurement Units (Standard & Compact)
