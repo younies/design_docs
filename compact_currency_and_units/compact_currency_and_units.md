@@ -127,8 +127,17 @@ When formatting currencies across different styles and notations, every currency
   * [TR35 Section 3.4](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Formatting) ensures that even in locales where `alt="alphaNextToNumber"` is not explicitly defined, formatting engines automatically inject appropriate spacing (`\u00A0`) between alphabetic currency codes and adjacent numbers.
 
 ##### Case 3: Full Name + Plain Number (Decimal)
-* **Example**: `1,200.01 US dollars` or `1,200,000.00 US dollars`
-* **Analysis & Behavior**: Combines the plain decimal number with the localized pluralized currency name (`¤¤¤`), adhering to unit/currency spacing rules and grammatical plural selection (`zero`, `one`, `two`, `few`, `many`, `other`).
+* **Example**: `1,200.01 US dollars` or `1,200,000.00 US dollars` (in `en`)
+* **TR35 Specification & Pattern Hierarchy**: According to **[Unicode Technical Standard #35 (LDML Part 3: Numbers, Section 3.4.2 Currency Display Names & Plurals)](https://www.unicode.org/reports/tr35/tr35-numbers.html#Currency_Display_Names)**, formatting with a full currency display name (`¤¤¤` like `US dollars` or `euros`) does **not** use standard symbol format patterns (`¤#,##0.00`). Because full currency names behave grammatically as measurement units, TR35 mandates that implementations use **unit layout templates (`currencyPattern` / `unitPattern` like `{0} {1}`)** combined with **pluralized display names (`displayName[@count="..."]`)**.
+* **The 3-Step Formatting Pipeline**:
+  1. **Numeric Formatting**: Format the numeric value using the standard decimal engine (`decimalFormat[@type="standard"]`).
+  2. **Plural Category Resolution**: Evaluate the numeric quantity against the locale's plural rules (`//supplementalData/plurals`) to select the grammatical plural category (`zero`, `one`, `two`, `few`, `many`, or `other`). If an exact plural category match is missing in the locale's currency display names, fall back to `count="other"` (and if `other` is absent, fall back to the base `displayName` or ISO code).
+  3. **Display Name & Layout Interpolation**: Retrieve the localized currency display name (`//ldml/numbers/currencies/currency/displayName[@count="<category>"]`) and interpolate it alongside the formatted number into the unit template (`{0} {1}` where `{0}` is the numeric string and `{1}` is the localized name).
+* **Concrete Examples (`en` Locale)**:
+  * In `en.xml`, the unit template is `{0} {1}` (`{0}` followed by a space and `{1}`). The display names for `USD` (`//currencies/currency[@type="USD"]/displayName`) define `count="one"` as `US dollar` and `count="other"` as `US dollars`.
+  * For value `1.00` (`one`): Formats `1.00` + selects `one` (`US dollar`) -> **`1.00 US dollar`** (or `1 US dollar`).
+  * For value `1,200.01` (`other`): Formats `1,200.01` + selects `other` (`US dollars`) -> **`1,200.01 US dollars`**.
+  * For value `1,200,000.00` (`other`): Formats `1,200,000.00` + selects `other` (`US dollars`) -> **`1,200,000.00 US dollars`**.
 
 ##### Case 4: Symbols + Compact Short
 * **Example**: `$1.2M` or `1.2M €`
