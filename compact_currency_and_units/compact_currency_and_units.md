@@ -1,4 +1,4 @@
-# Unified Numeric Engine Architecture: Powering Currency, Compact Currency, and Units via Decimal Formatting Data
+# Support Algorithmic Synthesis for Compact Currency and Measurement Units via Unified Numeric Engine (Zero New Locale Data)
 
 *Related Tickets & Documents: [CLDR-19617](https://unicode-org.atlassian.net/browse/CLDR-19617), [PR #5862](https://github.com/unicode-org/cldr/pull/5862), and [ICU4X Number Formatter Design](file:///usr/local/google/home/younies/i18n/design_docs/number_formatter.md).*
 
