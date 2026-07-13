@@ -144,7 +144,17 @@ When formatting currencies across different styles and notations, every currency
 
 ##### Case 4: Symbols + Compact Short
 * **Example**: `$1.2M` or `1.2M €`
-* **Analysis & Behavior**: Scales the number via the short compact decimal pattern and glues the short compact affix (e.g., `M`) into the standard currency pattern alongside the symbol (`¤`).
+* **TR35 Specification & Current Wording**: According to **[Unicode Technical Standard #35 (LDML Part 3: Numbers, Section 3.4.1 Compact Currency Formatting)](https://www.unicode.org/reports/tr35/tr35-numbers.html#Compact_Currency_Formatting)**, short compact currency formatting is supplied via explicit `currencyFormatLength[@type="short"]` patterns across powers of 10.
+  > **TR35 Section 3.4.1 Official Wording**:  
+  > *"Compact currency formats are supplied using `currencyFormatLength` elements, with `type="short"`. ... These formats are designed for space-constrained UI environments, aiming for an approximate width of 6–8 em. ... When `currencyFormatLength` is absent for a given locale or magnitude, implementations fall back to simple (non-compact) currency formatting."*
+* **The TR35 Fallback Problem & Redundancy**:
+  * **Severe Inconsistency**: Explicit short compact currency data (`currencyFormatLength[@type="short"]`) is only partially populated in some locales and completely absent in many others. Under current TR35 fallback rules, missing magnitudes revert to uncompacted standard strings (`$1,200,000.00`), defeating the goal of space-constrained UI formatting.
+  * **Massive Redundancy**: Where explicit patterns *do* exist, they almost entirely duplicate the numerical scaling and literal affixes (`K`, `M`, `B`) already defined in the locale's short compact decimal table (`decimalFormatLength[@type="short"]`).
+* **Our Algorithmic Synthesis Solution (`92.48% Match Rate`)**:
+  As validated in `compact_currency_prediction_report_std.md` ([PR #5862](https://github.com/unicode-org/cldr/pull/5862)), Case 4 can be dynamically synthesized without redundant locale data by:
+  1. **Scaling**: Formatting the numeric value via the locale's authoritative Short Compact Decimal Formatter (`decimalFormatLength[@type="short"]` -> `1.2M`).
+  2. **Layout Interpolation**: Interpolating that compact string into the numeric placeholder of the locale's standard currency layout (`currencyFormat[@type="standard"]` -> `$1.2M` / `1,2 M €`).
+  Across all `39,816` existing explicit short compact currency cases in CLDR, this exact 2-step gluing formula matches locale data in **36,822 cases (`92.48%`)**. The remaining `~7.5%` divergence consists primarily of actionable legacy bugs (`fa` prefix vs. suffix errors and incomplete cross-numbering-system fallbacks) that our cleanup strategy systematically resolves.
 
 ##### Case 5: ISO Code + Compact Short
 * **Example**: `USD 1.2M` or `1.2M USD`
