@@ -150,11 +150,17 @@ When formatting currencies across different styles and notations, every currency
 * **The TR35 Fallback Problem & Redundancy**:
   * **Severe Inconsistency**: Explicit short compact currency data (`currencyFormatLength[@type="short"]`) is only partially populated in some locales and completely absent in many others. Under current TR35 fallback rules, missing magnitudes revert to uncompacted standard strings (`$1,200,000.00`), defeating the goal of space-constrained UI formatting.
   * **Massive Redundancy**: Where explicit patterns *do* exist, they almost entirely duplicate the numerical scaling and literal affixes (`K`, `M`, `B`) already defined in the locale's short compact decimal table (`decimalFormatLength[@type="short"]`).
-* **Our Algorithmic Synthesis Solution (`92.48% Match Rate`)**:
+* **Our Algorithmic Synthesis Solution (`92.59% Match Rate`)**:
   As validated in `compact_currency_prediction_report_std.md` ([PR #5862](https://github.com/unicode-org/cldr/pull/5862)), Case 4 can be dynamically synthesized without redundant locale data by:
   1. **Scaling**: Formatting the numeric value via the locale's authoritative Short Compact Decimal Formatter (`decimalFormatLength[@type="short"]` -> `1.2M`).
   2. **Layout Interpolation**: Interpolating that compact string into the numeric placeholder of the locale's standard currency layout (`currencyFormat[@type="standard"]` -> `$1.2M` / `1,2 M €`).
-  Across all `39,816` existing explicit short compact currency cases in CLDR, this exact 2-step gluing formula matches locale data in **36,822 cases (`92.48%`)**. The remaining `~7.5%` divergence consists primarily of actionable legacy bugs (`fa` prefix vs. suffix errors and incomplete cross-numbering-system fallbacks) that our cleanup strategy systematically resolves.
+  Across all `39,816` existing explicit short compact currency cases in CLDR, this exact 2-step gluing formula matches locale data in **36,864 cases (`92.59%`)**.
+* **Sub-point 4.1: Standard Compact Currency vs. Explicit Data (`EXISTS_MISMATCH` Audit)**:
+  Our automated prediction audit (`GenerateCompactCurrencyPredictionReport.java` with subpattern splitting enabled) identified exactly **41 `Locale / Numbering System` pairs (`2,952 total rows across magnitudes`)** where explicit standard short compact currency exists (`EXISTS`) but diverges from our algorithmic prediction (`EXISTS_MISMATCH`):
+  1. **Persian (`fa/arabext` - 72 mismatches)**: Spacing (`\u00A0` injected in compact vs. none in standard) and prefix vs. suffix orientation (placing `¤` as prefix when Persian requires suffix).
+  2. **Norwegian (`no/*` - 40 non-Latn numbering systems (`bali`, `beng`, `deva`, `mlym`, `thai`, etc.) / 2,880 mismatches)**: Partial fallback orientation inconsistency. `no` overridden `currencyFormat[@type="standard"]` to prefix (`¤ #,##0.00`) for non-Latn systems like `no/mlym`, but failed to override `currencyFormatLength[@type="short"]`, causing compact currency to fall back across numbering systems to `latn`'s suffix layout (`0k ¤`). This creates a contradictory layout orientation inside `no/mlym` where standard is prefix (`¤ 100`) while compact is suffix (`10k ¤`).
+  * *Audit Report*: Full details are documented in `compact_currency_prediction_exists_mismatches_report.md`.
+  * *Remediation (Tracked by Jira: [TBD-Ticket-4.1])*: Audit and correct `fa` and `no/*` legacy anomalies so algorithmic synthesis achieves 100% accuracy across existing data.
 
 ##### Case 5: ISO Code + Compact Short
 * **Example**: `USD 1.2M` or `1.2M USD`
