@@ -93,12 +93,13 @@ When formatting currencies across different styles and notations, every currency
   3. **Compact Long** (long powers-of-10 scaling and affix like `1.2 million`)
 
 #### Summary Matrix (Examples for `1,200,000` / `1,200.01` in `en_US` / `USD`)
+*(Note: In `en_US`, ISO code `USD` is always placed as a prefix (`USD 1,200.01`); in many other locales like `fr` or `de`, it is placed as a suffix (`1,200.01 USD` / `1 200,01 USD`).)*
 
 | Decimal Part Display \ Currency Display | 1. Symbols (`$` / `US$`) | 2. ISO Code (`USD`) | 3. Full Name (`US dollars`) |
 | :--- | :--- | :--- | :--- |
-| **1. Plain Number (Decimal)** | `$1,200.01`<br/>`$1,200,000.00` *(Case 1)* | `USD 1,200.01`<br/>`1,200,000.00 USD` *(Case 2)* | `1,200.01 US dollars`<br/>`1,200,000.00 US dollars` *(Case 3)* |
-| **2. Compact Short** | `$1.2M` *(Case 4)* | `USD 1.2M` / `1.2M USD` *(Case 5)* | `1.2M US dollars` *(Case 6)* |
-| **3. Compact Long** | `$1.2 million` *(Case 7)* | `USD 1.2 million` / `1.2 million USD` *(Case 8)* | `1.2 million US dollars` *(Case 9)* |
+| **1. Plain Number (Decimal)** | `$1,200.01`<br/>`$1,200,000.00` *(Case 1)* | `USD 1,200.01`<br/>`USD 1,200,000.00` *(Case 2)* | `1,200.01 US dollars`<br/>`1,200,000.00 US dollars` *(Case 3)* |
+| **2. Compact Short** | `$1.2M` *(Case 4)* | `USD 1.2M` *(Case 5)* | `1.2M US dollars` *(Case 6)* |
+| **3. Compact Long** | `$1.2 million` *(Case 7)* | `USD 1.2 million` *(Case 8)* | `1.2 million US dollars` *(Case 9)* |
 
 #### Individual Discussion of the 9 Cases
 
