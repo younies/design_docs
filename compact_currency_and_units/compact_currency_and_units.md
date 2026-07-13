@@ -80,23 +80,81 @@ flowchart TD
 
 ## 2. Currency Architecture, Analysis & Investigation
 
-### 2.1 Standard (Normal) Currency Formatting
+### 2.1 The 9 Currency Formatting Cases & Matrix
+When formatting currencies across different styles and notations, every currency output is formed by combining one of three **Currency Length/Display** options with one of three **Decimal Part Display** options. This creates exactly **9 distinct formatting cases**:
+
+* **Currency Length / Display Options**:
+  1. **Symbols** (standard symbol `¤` like `$` / `US$` and narrow symbol like `$`)
+  2. **ISO Code** (3-letter currency code like `USD`)
+  3. **Full Name** (localized display name `¤¤¤` like `US dollars`)
+* **Decimal Part Display Options**:
+  1. **Plain Number (Decimal)** (standard grouping/fraction formatting like `1,200.01` or `1,200,000.00`)
+  2. **Compact Short** (short powers-of-10 scaling and affix like `1.2M`)
+  3. **Compact Long** (long powers-of-10 scaling and affix like `1.2 million`)
+
+#### Summary Matrix (Examples for `1,200,000` / `1,200.01` in `en_US` / `USD`)
+
+| Decimal Part Display \ Currency Display | 1. Symbols (`$` / `US$`) | 2. ISO Code (`USD`) | 3. Full Name (`US dollars`) |
+| :--- | :--- | :--- | :--- |
+| **1. Plain Number (Decimal)** | `$1,200.01`<br/>`$1,200,000.00` *(Case 1)* | `USD 1,200.01`<br/>`1,200,000.00 USD` *(Case 2)* | `1,200.01 US dollars`<br/>`1,200,000.00 US dollars` *(Case 3)* |
+| **2. Compact Short** | `$1.2M` *(Case 4)* | `USD 1.2M` / `1.2M USD` *(Case 5)* | `1.2M US dollars` *(Case 6)* |
+| **3. Compact Long** | `$1.2 million` *(Case 7)* | `USD 1.2 million` / `1.2 million USD` *(Case 8)* | `1.2 million US dollars` *(Case 9)* |
+
+#### Individual Discussion of the 9 Cases
+
+##### Case 1: Symbols + Plain Number (Decimal)
+* **Example**: `$1,200.01` or `$1,200,000.00`
+* **Analysis & Behavior**: Standard currency pattern layout (`currencyFormat[@type="standard"|"accounting"]`) applied directly to the plain decimal number, adjusting only fraction digits and rounding.
+
+##### Case 2: ISO Code + Plain Number (Decimal)
+* **Example**: `USD 1,200.01` or `1,200,000.00 USD`
+* **Analysis & Behavior**: Replaces the currency symbol (`¤`) with the 3-letter ISO code (`¤¤`) within the standard currency layout pattern, preserving exact decimal grouping.
+
+##### Case 3: Full Name + Plain Number (Decimal)
+* **Example**: `1,200.01 US dollars` or `1,200,000.00 US dollars`
+* **Analysis & Behavior**: Combines the plain decimal number with the localized pluralized currency name (`¤¤¤`), adhering to unit/currency spacing rules and grammatical plural selection (`zero`, `one`, `two`, `few`, `many`, `other`).
+
+##### Case 4: Symbols + Compact Short
+* **Example**: `$1.2M` or `1.2M €`
+* **Analysis & Behavior**: Scales the number via the short compact decimal pattern and glues the short compact affix (e.g., `M`) into the standard currency pattern alongside the symbol (`¤`).
+
+##### Case 5: ISO Code + Compact Short
+* **Example**: `USD 1.2M` or `1.2M USD`
+* **Analysis & Behavior**: Scales via the short compact decimal engine and interpolates alongside the ISO currency code (`¤¤`), ensuring appropriate non-breaking spacing (`\u00A0`).
+
+##### Case 6: Full Name + Compact Short
+* **Example**: `1.2M US dollars`
+* **Analysis & Behavior**: Scales via the short compact decimal engine (giving `1.2M`) and appends the pluralized full currency display name (`¤¤¤`) governed by the compact number's plural category (`other`).
+
+##### Case 7: Symbols + Compact Long
+* **Example**: `$1.2 million` or `1.2 million €`
+* **Analysis & Behavior**: Scales via the long compact decimal engine and interpolates alongside the currency symbol (`¤`). Requires careful spacing resolution so literal words (like `million`) do not collide with adjacent symbols.
+
+##### Case 8: ISO Code + Compact Long
+* **Example**: `USD 1.2 million` or `1.2 million USD`
+* **Analysis & Behavior**: Scales via the long compact decimal engine and combines with the ISO currency code (`¤¤`) using standardized layout rules.
+
+##### Case 9: Full Name + Compact Long
+* **Example**: `1.2 million US dollars`
+* **Analysis & Behavior**: Scales via the long compact decimal engine and combines with the localized full currency display name (`¤¤¤`), aligning both the long compact word (`million`) and currency name (`US dollars`) grammatically.
+
+### 2.2 Standard (Normal) Currency Formatting
 In standard, non-compact currency formatting (e.g., `$1,234.56`), the core numerical pattern (grouping separators, integer digit rules, and decimal layout) matches standard decimal formatting perfectly. To format a normal currency string, an implementation does not need a distinct number formatting engine; it simply inherits the standard decimal pattern and adjusts:
 1. **Fraction Digits & Rounding**: Applying currency-specific minor units (e.g., 2 decimal places for USD/EUR, 0 for JPY, 3 for BHD) and rounding rules (e.g., cash rounding vs. financial rounding).
 2. **Magnitude & Affixes**: Applying any currency scaling and attaching the localized symbol or display name (`¤` or `¤¤¤`) according to the layout template.
 This establishes that even before compact formatting is considered, currency formatting is fundamentally just a parameterized derivation of decimal formatting.
 
-### 2.2 Compact Currency Data Deficiencies
+### 2.3 Compact Currency Data Deficiencies
 * **Compact Currency Short**: Existing LDML data for short compact currency (`currencyFormatLength[@type="short"]`) is severely inconsistent. It is partially populated in some locales and completely absent in many others. Where present, it largely duplicates the numerical scaling and affix logic already defined in compact decimal formats.
 * **Compact Currency Long**: There is **zero locale data** in CLDR for long compact currency (e.g., `$10 million` or `10 million US dollars`). Downstream formatters currently have no standardized way to produce long compact currency strings.
 
-### 2.3 Non-Compact & Compact Pattern Consistency Analysis
+### 2.4 Non-Compact & Compact Pattern Consistency Analysis
 An investigation into standard (**non-compact**) decimal patterns and currency patterns across LDML reveals profound structural identity:
 1. **Integer Part Identity (Decimal vs. Currency in Non-Compact Formatting)**: In standard (non-compact) formatting, the integer portion of currency patterns and decimal patterns (e.g., grouping sizes, primary/secondary grouping like `#,##0` or `#,##,##0`) is identical within a locale. The only difference is that currency patterns specify fraction digits (e.g., `.00`), rounding, or affix symbols (`¤`).
 2. **Number Part Uniformity Across Currency Patterns**: For any given locale, the numerical part of the pattern is identical across all currency formatting variations (standard vs. accounting, or different currency styles). Where accounting patterns differ (e.g., `#,##0.00 ¤;(#,##0.00 ¤)`), the difference is strictly in the surrounding negative affixes (parentheses), while the underlying number formatting structure remains completely unchanged.
 3. **Implications for Core Architecture**: Because the integer and number parts are identical even in non-compact formatting, currency formatting does not need its own separate numerical formatting logic or grouping data. The decimal formatter is already the natural, authoritative engine for all number formatting (both compact and non-compact). The rare discrepancies observed in certain locales appear to be legacy data bugs or accidental inconsistencies rather than intentional typographic distinctions.
 
-### 2.4 Currency Codebase & Tooling Investigation
+### 2.5 Currency Codebase & Tooling Investigation
 Our inspection of the CLDR toolchain and test suite confirms the need for this unified currency model:
 * **Commented-Out Tooling Capabilities**: In [VerifyCompactNumbers.java](file:///usr/local/google/home/younies/i18n/cldr/google3/third_party/cldr/tools/cldr-code/src/main/java/org/unicode/cldr/test/VerifyCompactNumbers.java), test columns for `Compact-Long+Currency` and `Compact-Long+Currency-Long` are explicitly commented out due to the historical lack of a formal synthesis pipeline and data model.
 * **Prototype Alignment**: Recent efforts in PRs like [#5862](https://github.com/unicode-org/cldr/pull/5862) demonstrate that algorithmic gluing of decimal formats with currency patterns successfully resolves existing short compact gaps without introducing new locale data.
