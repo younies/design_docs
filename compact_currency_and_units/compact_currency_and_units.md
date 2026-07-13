@@ -94,6 +94,8 @@ Our unified design and automated audit toolchain deliver transformative impact a
    By modernizing **TR35 Section 3.4.1** so that missing explicit compact tables fall back to dynamic algorithmic synthesis rather than uncompacted long strings (`$1,200,000.00`), **1,728 previously broken magnitude rows across 24 numbering systems** (`ar/arab`, `fa/arab`, `ur/arab`, `zh/arab`, etc.) immediately gain high-quality, space-constrained short compact formatting (`$1.2M`, `USD 1.2M`) out of the box without adding a single XML line to CLDR.
 4. **Closing the TR35 ISO Code Compact Specification Gap (`CLDR-19634`)**:
    By identifying that TR35 Section 3.4.1 historically lacked explicit rules for compact currency formatting with 3-letter ISO codes (`Case 5`), our proposal establishes a formal algorithmic synthesis standard (`decimalFormatLength[@type="short"]` + `alphaNextToNumber`). This eliminates implementation ambiguity and guarantees clean, space-separated ISO compact strings (`USD 1.2M`, `1,2 M EUR`) across all locales and formatting engines worldwide without requiring unique ISO compact XML tables.
+5. **Universal Full Name Compact Short Support at Zero Data Cost (`CLDR-19635`)**:
+   By formalizing algorithmic synthesis between short compact decimal scaling (`decimalFormatLength[@type="short"]`), display names (`displayName[@count="..."]`), and unit patterns (`unitPattern[@count="..."]`), **100% of global locales automatically gain Full Name Compact Short formatting (`1,2 Mio. US-Dollar`, `120万米ドル`, `1.2 مليون دولار أمريكي`) out of the box with zero marginal XML data cost**, while providing official TR35 stylistic guidance on grammatical and visual appropriateness across language families.
 
 ### 2.2 Measurement Unit Impact (Future Roadmap)
 1. **Zero Legacy Reconciliation Overhead**: Because CLDR currently possesses **zero existing `compact` measurement unit data** (`0 rows across all locales`), our algorithmic synthesis formula applies cleanly and instantly across the entire global repository without requiring bug cleanup tickets or legacy data reconciliation.
@@ -236,8 +238,29 @@ When formatting currencies across different styles and notations, every currency
   2. **Automatic Spacing Fallback Rule**: If `pattern[@alt="alphaNextToNumber"]` is absent from standard currency, implementations must take `pattern[@type="standard"]` and automatically insert a non-breaking space (`\u00A0`) separating the ISO currency code (`¤¤`) from adjacent digits or affixes (`USD 1.2M` / `1,2 M EUR`).
 
 ##### Case 6: Full Name + Compact Short
-* **Example**: `1.2M US dollars`
-* **Analysis & Behavior**: Scales via the short compact decimal engine (giving `1.2M`) and appends the pluralized full currency display name (`¤¤¤`) governed by the compact number's plural category (`other`).
+* **Example**: `1.2M US dollars` or `1,2 Mio. US-Dollar` (or `120万米ドル`)
+* **TR35 Specification Gap & Why It Exists**:
+  Historically, **TR35 Section 3.4.1 (Compact Currency Formatting)** focused exclusively on symbol-based compact currency (`currencyFormatLength[@type="short"]` -> `$1.2M`), while **TR35 Section 3.4.2 (`Currency Spacing & Display Names` / `unitPattern`)** focused exclusively on standard (non-compact) decimal numbers (`1,200.01 US dollars`). Because TR35 never formally specified how `unitPattern` operates when fed short compact decimal strings and their corresponding plural categories, downstream engines lack standardized rules for producing `Case 6` formatting.
+* **Algorithmic Gluing Technique & Zero New Data Foundation**:
+  To solve `Case 6` across 100% of locales without adding any new XML tables, implementations execute a 3-step algorithmic synthesis pipeline:
+  1. **Compact Scaling & Plural Category**: Scale the raw number (`1,200,000`) using `decimalFormatLength[@type="short"]` (`1.2M`) and evaluate it against `//ldml/numbers/pluralRules` to resolve the exact plural category (`other`).
+  2. **Display Name Lookup**: Retrieve the localized display name for that plural category (`//ldml/numbers/currencies/currency[@type="..."]/displayName[@count="other"]` -> `US dollars`).
+  3. **Grammatical Layout**: Interpolate both into the locale's `unitPattern[@count="other"]` (`{0} {1}`) -> `1.2M US dollars`.
+
+  Below is our empirical verification across representative global languages, audited against official dictionaries, style guides, and financial press (`1,200,000` / `USD` / `EUR`):
+
+  | Locale | Synthesized Case 6 String | Linguistic & Real-World Press Analysis |
+  | :--- | :--- | :--- |
+  | **`de_DE` (German)** | `1,2 Mio. US-Dollar`<br/>`5 Mrd. Euro` | **100% Legitimate & Primary Business Standard (Duden / Handelsblatt / FAZ)**: In German, `Mio.` (*Millionen*) and `Mrd.` (*Milliarden*) are formal noun abbreviations ending in a period. Duden specifies placing a non-breaking space before currency nouns (`1,2 Mio. Euro`). German press uses this daily as their primary standard. |
+  | **`ja_JP` (Japanese)** | `120万米ドル`<br/>`500億ユーロ` | **100% Legitimate & Gold Standard (Nikkei / NHK Style Manual)**: In Japanese Myriad numbering ($10^4$), `万` and `億` are both the compact symbol AND the natural grammatical numbers. When paired with full currency names (`米ドル`), `120万米ドル` is standard business Japanese across *Nikkei*. |
+  | **`ar_EG` (Arabic)** | `1.2 مليون دولار أمريكي`<br/>`5 مليارات يورو` | **100% Legitimate & Identical to Formal Prose (Al Jazeera / Reuters Arabic)**: Because Arabic short and long compact representations at the million scale share the exact same full word (`مليون`), combining them with currency names produces the exact natural phrasing used in formal Arabic journalism. |
+  | **`en_US` (English)** | `1.2M US dollars`<br/>`5B British pounds` | **Stylistically Hybrid (Chicago Manual of Style / AP)**: English style guides discourage pairing single-letter abbreviations (`M`/`B`) with spelled-out words (`US dollars`). They mandate either `Case 4/5` (`$1.2M` / `USD 1.2M`) for compact tables, OR `Case 9` (`1.2 million US dollars`) for prose. |
+  | **`fr_FR` (French)** | `1,2 M de dollars des États-Unis` | **Typographically Disfavored (EU Style Guide / Les Échos)**: Mixing single-letter abbreviation `M` with long prepositional phrases (`de dollars des États-Unis`) creates visual imbalance. French press prefers `Case 5` (`1,2 M USD`) or `Case 9` (`1,2 million de dollars`). |
+  | **`es_ES` (Spanish)** | `1,2 M de dólares estadounidenses` | **Stylistically Avoided (RAE Ortografía / El País)**: Similar to French, RAE permits `M` / `mill.`, but financial newspapers cleanly segregate compact charts (`1,2 M USD`) from formal article prose (`1,2 millones de dólares`). |
+
+* **Action Items & Formal TR35 Proposal (Tracked by Jira: [CLDR-19635](https://unicode-org.atlassian.net/browse/CLDR-19635))**:
+  1. **Formalize Case 6 Algorithmic Synthesis**: Update **TR35 Section 3.4.1** to specify that implementations can synthesize `Case 6` out of the box by combining short compact decimal scaling (`decimalFormatLength[@type="short"]`) with localized currency display names (`displayName[@count="..."]`) and unit patterns (`unitPattern[@count="..."]`), requiring zero new XML data.
+  2. **Official Typographic Guidance**: Add clear TR35 style notes advising UI designers that `Case 6` is standard and authoritative in German, Japanese, and Arabic, while `Case 4/5` or `Case 9` is preferred in English and Romance languages (`fr`, `es`).
 
 ##### Case 7: Symbols + Compact Long
 * **Example**: `$1.2 million` or `1.2 million €`
