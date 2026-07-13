@@ -249,23 +249,23 @@ When formatting currencies across different styles and notations, every currency
 * **Example**: `1.2 million US dollars`
 * **Analysis & Behavior**: Scales via the long compact decimal engine and combines with the localized full currency display name (`¤¤¤`), aligning both the long compact word (`million`) and currency name (`US dollars`) grammatically.
 
-### 2.2 Standard (Normal) Currency Formatting
+### 3.2 Standard (Normal) Currency Formatting
 In standard, non-compact currency formatting (e.g., `$1,234.56`), the core numerical pattern (grouping separators, integer digit rules, and decimal layout) matches standard decimal formatting perfectly. To format a normal currency string, an implementation does not need a distinct number formatting engine; it simply inherits the standard decimal pattern and adjusts:
 1. **Fraction Digits & Rounding**: Applying currency-specific minor units (e.g., 2 decimal places for USD/EUR, 0 for JPY, 3 for BHD) and rounding rules (e.g., cash rounding vs. financial rounding).
 2. **Magnitude & Affixes**: Applying any currency scaling and attaching the localized symbol or display name (`¤` or `¤¤¤`) according to the layout template.
 This establishes that even before compact formatting is considered, currency formatting is fundamentally just a parameterized derivation of decimal formatting.
 
-### 2.3 Compact Currency Data Deficiencies
+### 3.3 Compact Currency Data Deficiencies
 * **Compact Currency Short**: Existing LDML data for short compact currency (`currencyFormatLength[@type="short"]`) is severely inconsistent. It is partially populated in some locales and completely absent in many others. Where present, it largely duplicates the numerical scaling and affix logic already defined in compact decimal formats.
 * **Compact Currency Long**: There is **zero locale data** in CLDR for long compact currency (e.g., `$10 million` or `10 million US dollars`). Downstream formatters currently have no standardized way to produce long compact currency strings.
 
-### 2.4 Non-Compact & Compact Pattern Consistency Analysis
+### 3.4 Non-Compact & Compact Pattern Consistency Analysis
 An investigation into standard (**non-compact**) decimal patterns and currency patterns across LDML reveals profound structural identity:
 1. **Integer Part Identity (Decimal vs. Currency in Non-Compact Formatting)**: In standard (non-compact) formatting, the integer portion of currency patterns and decimal patterns (e.g., grouping sizes, primary/secondary grouping like `#,##0` or `#,##,##0`) is identical within a locale. The only difference is that currency patterns specify fraction digits (e.g., `.00`), rounding, or affix symbols (`¤`).
 2. **Number Part Uniformity Across Currency Patterns**: For any given locale, the numerical part of the pattern is identical across all currency formatting variations (standard vs. accounting, or different currency styles). Where accounting patterns differ (e.g., `#,##0.00 ¤;(#,##0.00 ¤)`), the difference is strictly in the surrounding negative affixes (parentheses), while the underlying number formatting structure remains completely unchanged.
 3. **Implications for Core Architecture**: Because the integer and number parts are identical even in non-compact formatting, currency formatting does not need its own separate numerical formatting logic or grouping data. The decimal formatter is already the natural, authoritative engine for all number formatting (both compact and non-compact). The rare discrepancies observed in certain locales appear to be legacy data bugs or accidental inconsistencies rather than intentional typographic distinctions.
 
-### 2.5 Currency Codebase & Tooling Investigation
+### 3.5 Currency Codebase & Tooling Investigation
 Our inspection of the CLDR toolchain and test suite confirms the need for this unified currency model:
 * **Commented-Out Tooling Capabilities**: In [VerifyCompactNumbers.java](file:///usr/local/google/home/younies/i18n/cldr/google3/third_party/cldr/tools/cldr-code/src/main/java/org/unicode/cldr/test/VerifyCompactNumbers.java), test columns for `Compact-Long+Currency` and `Compact-Long+Currency-Long` are explicitly commented out due to the historical lack of a formal synthesis pipeline and data model.
 * **Prototype Alignment**: Recent efforts in PRs like [#5862](https://github.com/unicode-org/cldr/pull/5862) demonstrate that algorithmic gluing of decimal formats with currency patterns successfully resolves existing short compact gaps without introducing new locale data.
