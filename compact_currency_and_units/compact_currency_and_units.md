@@ -104,7 +104,11 @@ When formatting currencies across different styles and notations, every currency
 
 ##### Case 1: Symbols + Plain Number (Decimal)
 * **Example**: `$1,200.01` or `$1,200,000.00`
-* **Analysis & Behavior**: Standard currency pattern layout (`currencyFormat[@type="standard"|"accounting"]`) applied directly to the plain decimal number, adjusting only fraction digits and rounding.
+* **Analysis & Core Behavior**: Standard currency pattern layout (`currencyFormat[@type="standard"|"accounting"]`) applied directly to the plain decimal number, adjusting fraction digits and rounding.
+* **Key Structural Findings across LDML**:
+  1. **Symmetry between Decimal Pattern and Currency Standard Pattern (Integer Part)**: Across almost every locale in CLDR, the integer portion of the standard currency pattern (grouping separators, primary/secondary grouping sizes like `#,##0` vs `#,##,##0`) is 100% identical to the standard decimal pattern (`decimalFormatLength/decimalFormat[@type="standard"]/pattern[@type="standard"]`). Currency formatting simply inherits this integer grouping structure and attaches fraction digits (`.00`), rounding rules, and the symbol placeholder (`¤`). *(Tracked by Jira: [TBD-Ticket-1])*
+  2. **Symmetry between all Currency Patterns in the Number Part**: Within any given locale, the numerical part (integer grouping + fraction template like `#,##0.00`) is identical across all currency formatting patterns (`standard` vs. `accounting`). Where accounting patterns differ (e.g., `#,##0.00 ¤;(#,##0.00 ¤)` vs `#,##0.00 ¤`), the distinction resides *strictly* in the surrounding negative affixes (parentheses vs. minus signs), while the underlying number pattern structure remains completely unchanged. *(Tracked by Jira: [TBD-Ticket-2])*
+  3. **Discovered Anomalies & Legacy Bugs**: In a small number of locales, rare discrepancies exist where the standard currency pattern's grouping size differs slightly from the standard decimal pattern, or where the accounting currency pattern's numerical portion diverges from the standard currency pattern. Our analysis reveals these are legacy data entry anomalies rather than intentional typographic distinctions, and they should be systematically lintoned and corrected.
 
 ##### Case 2: ISO Code + Plain Number (Decimal)
 * **Example**: `USD 1,200.01` or `1,200,000.00 USD`
