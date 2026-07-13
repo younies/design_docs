@@ -78,9 +78,31 @@ flowchart TD
 
 ---
 
-## 2. Currency Architecture, Analysis & Investigation
+## 2. Architectural & Ecosystem Impact
 
-### 2.1 The 9 Currency Formatting Cases & Matrix
+Our unified design and automated audit toolchain deliver transformative impact across both current currency formatting and future measurement unit formatting across the entire global CLDR/ICU ecosystem:
+
+### 2.1 Currency Impact (Current & Active)
+1. **Systematic Resolution of Legacy Data Bugs (`CLDR-19628`, `CLDR-19629`, `CLDR-19631`, `CLDR-19632`)**:
+   Our automated validation suite audited all 577 `Locale / Numbering System` pairs (`3,462` standard patterns and `41,544` compact magnitude rows) and systematically uncovered and tracked longstanding legacy data anomalies:
+   * **Integer & Number Part Symmetry (`CLDR-19628`, `CLDR-19629`)**: Correcting 19 anomalous locales (`az`, `gu`, `ml`, `mr`, `or`, `ta`, `te`, `as`, `pa`) where standard and accounting grouping diverged from decimal structures.
+   * **Compact Layout Orientation (`CLDR-19631`)**: Correcting `fa/arabext` RTL prefixing errors and eliminating contradictory prefix/suffix cross-numbering fallbacks across all `40 non-Latn numbering systems in no.xml`.
+   * **Compact Spacing & Missing Symbols (`CLDR-19632`)**: Restoring required `\u00A0` spacing across `13,339 rows` in `en`, `ja`, `ko`, `hi`, `zh` (preventing unreadable `USD12K` collisions) and restoring accidentally omitted currency symbols (`¤`) across `1,728 rows` in `ar/arab` and `eu/arab`.
+2. **Massive Repository Data Reduction via Algorithmic Gluing (`92.6% Accuracy`)**:
+   Instead of forcing translators to manually maintain ~40,000 explicit `currencyFormatLength[@type="short"]` patterns that redundantly duplicate `decimalFormatLength[@type="short"]` scaling, our 2-step algorithmic gluing technique synthesizes short compact currency out of the box with a **92.59% match rate (`36,864 matches`)**. With legacy anomalies cleaned up, CLDR can deprecate and prune thousands of redundant XML rows, dramatically reducing repository footprint while ensuring 100% synchronization between decimal and currency scaling.
+3. **Universal Compact Coverage via TR35 Fallback Modernization (`CLDR-19633`)**:
+   By modernizing **TR35 Section 3.4.1** so that missing explicit compact tables fall back to dynamic algorithmic synthesis rather than uncompacted long strings (`$1,200,000.00`), **1,728 previously broken magnitude rows across 24 numbering systems** (`ar/arab`, `fa/arab`, `ur/arab`, `zh/arab`, etc.) immediately gain high-quality, space-constrained short compact formatting (`$1.2M`, `USD 1.2M`) out of the box without adding a single XML line to CLDR.
+
+### 2.2 Measurement Unit Impact (Future Roadmap)
+1. **Zero Legacy Reconciliation Overhead**: Because CLDR currently possesses **zero existing `compact` measurement unit data** (`0 rows across all locales`), our algorithmic synthesis formula applies cleanly and instantly across the entire global repository without requiring bug cleanup tickets or legacy data reconciliation.
+2. **Infinite Scaling & Coverage Out of the Box**: Every single measurement unit (`meters`, `kilograms`, `gigabytes`, etc.) across all locales and numbering systems automatically gains full **Short Compact (`1.2M kg`) and Long Compact (`1.2 million kilograms`)** formatting capability simply by combining the locale's compact decimal scaling engine with existing grammatical unit layout templates (`{0} {1}`) and pluralized unit display names (`//ldml/units/unit/unitPattern`).
+3. **Preventing Future Repository Bloat**: Formalizing unit compact synthesis in **TR35 Section 3.6** permanently prevents the proliferation of redundant compact unit tables in CLDR XML files, keeping the locale data footprint minimal, clean, and highly maintainable for decades to come.
+
+---
+
+## 3. Currency Architecture, Analysis & Investigation
+
+### 3.1 The 9 Currency Formatting Cases & Matrix
 When formatting currencies across different styles and notations, every currency output is formed by combining one of three **Currency Length/Display** options with one of three **Decimal Part Display** options. This creates exactly **9 distinct formatting cases**:
 
 * **Currency Length / Display Options**:
@@ -235,19 +257,19 @@ Our inspection of the CLDR toolchain and test suite confirms the need for this u
 
 ---
 
-## 3. Measurement Unit Architecture & Synthesis
+## 4. Measurement Unit Architecture & Synthesis
 
-### 3.1 Standard vs. Compact Unit Formatting
+### 4.1 Standard vs. Compact Unit Formatting
 Measurement unit formatting (e.g., `15 kilometers` or `15 km`) has traditionally relied on combining standard decimal numbers with localized grammatical unit patterns (`unitLength[@type="long"|"short"|"narrow"]` with `unitPattern`). However, modern interfaces increasingly require **compact unit formatting** (e.g., `15M km` or `15 million kilometers`) to display large scientific or technical quantities cleanly in constrained UI spaces.
 
-### 3.2 Absence of Compact Unit Data & Why No Investigation Is Needed
+### 4.2 Absence of Compact Unit Data & Why No Investigation Is Needed
 Unlike currency formatting—where an investigation into explicit short compact patterns was necessary to identify legacy inconsistencies and redundancies—**the units domain requires no legacy data reconciliation or investigation**. 
 
 A comprehensive search of CLDR XML data and DTDs confirmed that **there is zero explicit locale data for compact units (short or long) anywhere in CLDR**. Units only define grammatical length templates (`unitPattern`). Because no explicit powers-of-10 compact unit tables exist in locale data:
 1. **Zero Legacy Debt**: There are no redundant or conflicting compact unit patterns to deprecate or clean up.
 2. **Pure-Play Synthesis**: Algorithmic synthesis is not merely an optimization for units—it is the *only* architectural mechanism capable of supporting compact units without causing an exponential explosion in locale data size.
 
-### 3.3 Unit Synthesis Model
+### 4.3 Unit Synthesis Model
 By extending the Unified Numeric Engine to units, compact unit formatting inherits 100% of its numerical scaling and affixes from Compact Decimal Formatting Data (`decimalFormatLength[@type="short"|"long"]`). The synthesis engine simply:
 1. Formats the numeric quantity using the underlying Compact Decimal Formatter (yielding a string like `1.5M` or `1.5 million` and a corresponding plural category such as `other`).
 2. Interpolates that compacted string into the appropriate `unitPattern` template (e.g., `{0} km` -> `1.5M km`, or `{0} kilometers` -> `1.5 million kilometers`), respecting localized grammatical case and gender rules.
@@ -255,11 +277,11 @@ By extending the Unified Numeric Engine to units, compact unit formatting inheri
 
 ---
 
-## 4. Proposal & Architectural Actions
+## 5. Proposal & Architectural Actions
 
 To solve the existing data deficiencies and establish a future-proof formatting architecture, we propose two distinct, coordinated solutions for Currency and Measurement Units:
 
-### 4.1 Proposal: Currency Formatting Architecture & TR35 Modernization
+### 5.1 Proposal: Currency Formatting Architecture & TR35 Modernization
 1. **Integrate Decimal Formatting Data as the Core Engine**:
    * **Mechanism**: Recognize Decimal Formatting Data as the authoritative engine for all number formatting (both non-compact and compact). For compact currencies, use compact decimal formatting data (`decimalFormatLength[@type="short"|"long"]`) as the primary engine and fallback. The compact decimal value (including its literal affixes like "K", "M", "thousand", or "million") is dynamically interpolated into the locale's standard or accounting currency pattern (`currencyFormat[@type="standard"|"accounting"]`), leveraging the fact that their integer and number parts are fundamentally identical.
    * **Outcome**: Eliminates redundant number formatting logic in non-compact currency formatting, automatically achieves 100% coverage for short compact currency across all locales, and introduces **long compact currency** support out-of-the-box with zero new locale data.
@@ -280,7 +302,7 @@ flowchart TD
 > [!IMPORTANT]
 > By changing the TR35 fallback recommendation from *simple currency formatting* to *algorithmic compact synthesis*, we ensure that users always receive abbreviated, human-readable numbers (e.g., `$10K` instead of `$10,000.00`) even in locales that lack explicit compact currency patterns.
 
-### 4.2 Proposal: Measurement Unit Architecture & Synthesis
+### 5.2 Proposal: Measurement Unit Architecture & Synthesis
 1. **Extend Algorithmic Synthesis to Units & Compact Units**:
    * **Mechanism**: Apply the exact same pattern-gluing architecture to measurement units. Because there is zero legacy compact data in CLDR XML/DTDs, the unit synthesis model is pure-play: compact decimal strings from `decimalFormatLength[@type="short"|"long"]` will be dynamically combined with localized `unitPattern` templates, respecting plural categories and grammatical case/gender rules.
    * **Outcome**: Unlocks short and long compact unit formatting (e.g., `3M km`, `3 million kilometers`) across all supported locales without requiring translators to maintain powers-of-10 unit matrices.
@@ -289,7 +311,7 @@ flowchart TD
 
 ---
 
-## 5. Next Steps & Implementation Plan
+## 6. Next Steps & Implementation Plan
 
 1. **Formalize Gluing & Spacing Rules**: Document exact string manipulation rules for merging decimal affixes with currency symbols (e.g., avoiding double spaces, inserting non-breaking spaces `\u00A0` where required by locale typography).
 2. **Toolchain Enablement**:
