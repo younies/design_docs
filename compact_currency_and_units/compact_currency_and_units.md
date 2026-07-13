@@ -160,7 +160,7 @@ When formatting currencies across different styles and notations, every currency
   1. **Persian (`fa/arabext` - 72 mismatches)**: Spacing (`\u00A0` injected in compact vs. none in standard) and prefix vs. suffix orientation (placing `¤` as prefix when Persian requires suffix).
   2. **Norwegian (`no/*` - 40 non-Latn numbering systems (`bali`, `beng`, `deva`, `mlym`, `thai`, etc.) / 2,880 mismatches)**: Partial fallback orientation inconsistency. `no` overridden `currencyFormat[@type="standard"]` to prefix (`¤ #,##0.00`) for non-Latn systems like `no/mlym`, but failed to override `currencyFormatLength[@type="short"]`, causing compact currency to fall back across numbering systems to `latn`'s suffix layout (`0k ¤`). This creates a contradictory layout orientation inside `no/mlym` where standard is prefix (`¤ 100`) while compact is suffix (`10k ¤`).
   * *Audit Report*: Full details are documented in `compact_currency_prediction_exists_mismatches_report.md`.
-  * *Remediation (Tracked by Jira: [TBD-Ticket-4.1])*: Audit and correct `fa` and `no/*` legacy anomalies so algorithmic synthesis achieves 100% accuracy across existing data.
+  * *Remediation (Tracked by Jira: [CLDR-19631](https://unicode-org.atlassian.net/browse/CLDR-19631))*: Audit and correct `fa` and `no/*` legacy anomalies so algorithmic synthesis achieves 100% accuracy across existing data.
 
 ##### Case 5: ISO Code + Compact Short
 * **Example**: `USD 1.2M` or `1.2M USD`
